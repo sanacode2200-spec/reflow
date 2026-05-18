@@ -1,0 +1,303 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import FullCalendar from "@fullcalendar/react";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import type {
+  EventClickArg,
+  EventDropArg,
+  DateSelectArg,
+  EventContentArg,
+} from "@fullcalendar/core";
+import { format } from "date-fns";
+import { ja } from "date-fns/locale";
+import { deleteSchedule } from "@/lib/actions/schedule";
+import type { ScheduleWithRelations } from "@/lib/actions/schedule";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+type Props = {
+  schedules: ScheduleWithRelations[];
+  tenantId: string;
+  onEventClick: (scheduleId: string) => void;
+  onRefresh: () => void;
+};
+
+type SlotDuration = "00:20:00" | "00:10:00" | "00:05:00";
+
+type ContextMenu = {
+  x: number;
+  y: number;
+  schedule: ScheduleWithRelations;
+} | null;
+
+type DeleteTarget = {
+  schedule: ScheduleWithRelations;
+} | null;
+
+const statusColors: Record<string, { border: string; bg: string; text: string; dashed?: boolean }> =
+  {
+    scheduled: { border: "#eaeaea", bg: "#fafafa", text: "#888" },
+    draft: { border: "#f97316", bg: "#ffedd5", text: "#ea580c", dashed: true },
+    completed: { border: "#0070f3", bg: "#f0f7ff", text: "#0070f3" },
+  };
+
+export default function CalendarView({ schedules, tenantId, onEventClick, onRefresh }: Props) {
+  const calendarRef = useRef<FullCalendar>(null);
+  const [slotDuration, setSlotDuration] = useState<SlotDuration>("00:20:00");
+  const [contextMenu, setContextMenu] = useState<ContextMenu>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [tooltip, setTooltip] = useState<{
+    x: number;
+    y: number;
+    schedule: ScheduleWithRelations;
+  } | null>(null);
+
+  const slotMinHeight = slotDuration === "00:05:00" ? 12 : 24;
+
+  const events = schedules.map((s) => {
+    const status = s.session_status ?? "scheduled";
+    const colors = statusColors[status] ?? statusColors["scheduled"]!;
+    return {
+      id: s.id,
+      title: `${format(s.start_at, "HH:mm")} ${s.patient_name}`,
+      start: s.start_at,
+      end: s.end_at,
+      extendedProps: { schedule: s, status },
+      borderColor: colors.border,
+      backgroundColor: colors.bg,
+      textColor: colors.text,
+    };
+  });
+
+  const handleEventClick = useCallback(
+    (arg: EventClickArg) => {
+      const schedule = arg.event.extendedProps["schedule"] as ScheduleWithRelations;
+      onEventClick(schedule.id);
+    },
+    [onEventClick]
+  );
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, schedule: ScheduleWithRelations) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, schedule });
+  }, []);
+
+  const handleDeleteClick = useCallback(() => {
+    if (!contextMenu) return;
+    setDeleteTarget({ schedule: contextMenu.schedule });
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteSchedule(deleteTarget.schedule.id, tenantId);
+      onRefresh();
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  }, [deleteTarget, tenantId, onRefresh]);
+
+  useEffect(() => {
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", (e) => e.key === "Escape" && close());
+    return () => window.removeEventListener("click", close);
+  }, []);
+
+  const renderEventContent = (arg: EventContentArg) => {
+    const schedule = arg.event.extendedProps["schedule"] as ScheduleWithRelations;
+    return (
+      <div
+        className="h-full w-full cursor-pointer truncate overflow-hidden px-1 text-xs leading-tight"
+        onContextMenu={(e) => handleContextMenu(e, schedule)}
+        onMouseEnter={(e) => {
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setTooltip({ x: rect.left, y: rect.bottom + 4, schedule });
+        }}
+        onMouseLeave={() => setTooltip(null)}
+      >
+        {arg.event.title}
+      </div>
+    );
+  };
+
+  const deleteTargetStatus = deleteTarget?.schedule.session_status ?? "scheduled";
+  const canDelete =
+    deleteTargetStatus === "scheduled" || deleteTarget?.schedule.session_status === null;
+
+  return (
+    <div className="relative">
+      {/* Slot duration toggle */}
+      <div className="mb-3 flex gap-1">
+        {(["00:20:00", "00:10:00", "00:05:00"] as SlotDuration[]).map((d) => (
+          <button
+            key={d}
+            onClick={() => setSlotDuration(d)}
+            className={`rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
+              slotDuration === d
+                ? "border-black bg-black text-white"
+                : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111]"
+            }`}
+          >
+            {d === "00:20:00" ? "20分" : d === "00:10:00" ? "10分" : "5分"}
+          </button>
+        ))}
+      </div>
+
+      <style>{`
+        .fc-timegrid-slot { height: ${slotMinHeight}px !important; }
+        .fc-event { border-style: solid; }
+        .fc-event.status-draft { border-style: dashed !important; }
+        .fc-today-highlight .fc-day-today { background: #f0f7ff !important; }
+        .fc-timegrid-now-indicator-line { border-color: #0070f3 !important; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #eaeaea; border-radius: 3px; }
+      `}</style>
+
+      <FullCalendar
+        ref={calendarRef}
+        plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+        initialView="timeGridWeek"
+        locale="ja"
+        headerToolbar={{
+          left: "prev,next today",
+          center: "title",
+          right: "timeGridWeek,timeGridDay",
+        }}
+        slotMinTime="08:00:00"
+        slotMaxTime="21:00:00"
+        slotDuration={slotDuration}
+        businessHours={{ daysOfWeek: [1, 2, 3, 4, 5, 6], startTime: "08:00", endTime: "19:00" }}
+        hiddenDays={[0]}
+        nowIndicator
+        editable
+        selectable
+        selectMirror
+        dayMaxEvents
+        events={events}
+        eventContent={renderEventContent}
+        eventClick={handleEventClick}
+        eventDrop={(arg: EventDropArg) => {
+          if (arg.jsEvent.ctrlKey || arg.jsEvent.altKey || arg.jsEvent.metaKey) {
+            arg.revert();
+          }
+        }}
+        height="auto"
+      />
+
+      {/* Context menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 min-w-[160px] rounded-lg border border-[#eaeaea] bg-white py-1 shadow-md"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            className="w-full px-4 py-2 text-left text-sm text-[#888] hover:bg-[#fafafa]"
+            onClick={() => {
+              onEventClick(contextMenu.schedule.id);
+              setContextMenu(null);
+            }}
+          >
+            この予約を複製
+          </button>
+          <div className="my-1 border-t border-[#eaeaea]" />
+          {contextMenu.schedule.session_status === "scheduled" ||
+          contextMenu.schedule.session_status === null ? (
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-[#fafafa]"
+              style={{ color: "#ee0000" }}
+              onClick={handleDeleteClick}
+            >
+              この予約を削除
+            </button>
+          ) : (
+            <button
+              className="w-full cursor-not-allowed px-4 py-2 text-left text-sm text-[#ccc]"
+              disabled
+            >
+              削除不可
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="pointer-events-none fixed z-[70] rounded-lg border border-[#eaeaea] bg-white px-3 py-2 text-xs shadow-md"
+          style={{ left: tooltip.x, top: tooltip.y }}
+        >
+          <div className="mb-1 font-bold text-[#111]">{tooltip.schedule.patient_name}</div>
+          <div className="text-[#888]">
+            {format(tooltip.schedule.start_at, "HH:mm")} –{" "}
+            {format(tooltip.schedule.end_at, "HH:mm")}
+          </div>
+          <div className="text-[#888]">{tooltip.schedule.therapist_name}</div>
+          <div className="text-[#888]">{tooltip.schedule.units}単位</div>
+          <div className="mt-1">
+            <span
+              className="rounded px-1.5 py-0.5 text-xs"
+              style={{
+                background:
+                  statusColors[tooltip.schedule.session_status ?? "scheduled"]?.bg ?? "#fafafa",
+                color: statusColors[tooltip.schedule.session_status ?? "scheduled"]?.text ?? "#888",
+              }}
+            >
+              {tooltip.schedule.session_status === "completed"
+                ? "実施済み"
+                : tooltip.schedule.session_status === "draft"
+                  ? "一時保存"
+                  : "予約"}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>予約を削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <>
+                  <strong>{deleteTarget.schedule.patient_name}</strong> の{" "}
+                  <strong>
+                    {format(deleteTarget.schedule.start_at, "M月d日(E) HH:mm", { locale: ja })}
+                  </strong>{" "}
+                  の予約を削除します。この操作は取り消せません。
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting || !canDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? "削除中..." : "削除する"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
