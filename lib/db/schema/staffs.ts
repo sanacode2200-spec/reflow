@@ -13,6 +13,7 @@ export const staffs = pgTable("staffs", {
   name_kana: text("name_kana").notNull(),
   role: userRoleEnum("role").notNull().default("therapist"),
   occupation: occupationEnum("occupation").notNull().default("pt"),
+  staff_code: text("staff_code"),
   email: text("email"),
   max_units_per_day: integer("max_units_per_day").notNull().default(18),
   max_units_per_week: integer("max_units_per_week").notNull().default(108),

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [staffCode, setStaffCode] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -17,13 +17,19 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
+    if (!/^\d{4}$/.test(staffCode)) {
+      setError("スタッフIDは数字4桁で入力してください");
+      return;
+    }
+
+    setLoading(true);
+    const email = `${staffCode}@reflow.local`;
     const supabase = createClient();
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
-      setError("メールアドレスまたはパスワードが正しくありません。");
+      setError("IDまたはパスワードが正しくありません");
       setLoading(false);
       return;
     }
@@ -42,15 +48,18 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="email">メールアドレス</Label>
+            <Label htmlFor="staffCode">スタッフID</Label>
             <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="example@clinic.jp"
+              id="staffCode"
+              type="text"
+              inputMode="numeric"
+              value={staffCode}
+              onChange={(e) => setStaffCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="0000"
               required
-              autoComplete="email"
+              maxLength={4}
+              className="text-center font-mono text-lg tracking-[0.4em]"
+              autoComplete="username"
             />
           </div>
 
