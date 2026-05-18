@@ -3,14 +3,18 @@ import { tenants } from "./tenants";
 import { staffs } from "./staffs";
 
 export const genderEnum = pgEnum("gender", ["male", "female", "other"]);
-export const insuranceTypeEnum = pgEnum("insurance_type", ["medical", "workers_comp", "auto"]);
-export const onsetTypeEnum = pgEnum("onset_type", ["onset", "surgery", "exacerbation"]);
+export const insuranceTypeEnum = pgEnum("insurance_type", [
+  "medical",
+  "workers_comp",
+  "auto_liability",
+]);
+export const onsetTypeEnum = pgEnum("onset_type", ["onset", "surgery", "acute_exacerbation"]);
 export const facilityGradeEnum = pgEnum("facility_grade", ["grade_1", "grade_2", "grade_3"]);
 export const diseaseCategoryEnum = pgEnum("disease_category", [
   "cerebrovascular",
   "musculoskeletal",
   "disuse_syndrome",
-  "cardiac",
+  "cardiovascular",
   "respiratory",
 ]);
 
@@ -31,7 +35,9 @@ export const patients = pgTable("patients", {
   rehab_start_date: date("rehab_start_date").notNull(),
   onset_date: date("onset_date").notNull(),
   onset_type: onsetTypeEnum("onset_type").notNull().default("onset"),
-  therapist_id: uuid("therapist_id").references(() => staffs.id),
+  therapist_id: uuid("therapist_id")
+    .notNull()
+    .references(() => staffs.id),
   is_nursing_care: boolean("is_nursing_care").notNull().default(false),
   medical_history: text("medical_history"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
