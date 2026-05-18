@@ -13,6 +13,7 @@ const patientSchema = z.object({
   name_kana: z.string().min(1, "氏名（カナ）を入力してください"),
   birth_date: z.string().min(1, "生年月日を入力してください"),
   gender: z.enum(["male", "female", "other"]),
+  patient_type: z.enum(["inpatient", "outpatient"]),
   insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
   main_diagnosis: z.string().min(1, "主病名を入力してください"),
   disease_category: z.enum([
@@ -40,6 +41,7 @@ export type PatientRow = {
   name_kana: string;
   birth_date: string;
   gender: "male" | "female" | "other";
+  patient_type: "inpatient" | "outpatient";
   insurance_type: "medical" | "workers_comp" | "auto_liability";
   main_diagnosis: string;
   disease_category:
@@ -83,6 +85,7 @@ export async function getPatients(
       name_kana: patients.name_kana,
       birth_date: patients.birth_date,
       gender: patients.gender,
+      patient_type: patients.patient_type,
       insurance_type: patients.insurance_type,
       main_diagnosis: patients.main_diagnosis,
       disease_category: patients.disease_category,
@@ -131,6 +134,7 @@ export async function getPatient(id: string, tenantId: string): Promise<PatientR
       name_kana: patients.name_kana,
       birth_date: patients.birth_date,
       gender: patients.gender,
+      patient_type: patients.patient_type,
       insurance_type: patients.insurance_type,
       main_diagnosis: patients.main_diagnosis,
       disease_category: patients.disease_category,

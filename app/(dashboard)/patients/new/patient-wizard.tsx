@@ -19,6 +19,7 @@ const schema = z.object({
   name_kana: z.string().min(1, "氏名（カナ）を入力してください"),
   birth_date: z.string().min(1, "生年月日を入力してください"),
   gender: z.enum(["male", "female", "other"]),
+  patient_type: z.enum(["inpatient", "outpatient"]),
   insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
   main_diagnosis: z.string().min(1, "主病名を入力してください"),
   disease_category: z.enum([
@@ -43,7 +44,7 @@ type Props = { tenantId: string; staffs: Staff[] };
 
 const stepTitles = ["基本情報", "保険・診療", "リハビリ情報", "確認"];
 const stepFields: (keyof Form)[][] = [
-  ["patient_code", "name_kanji", "name_kana", "birth_date", "gender"],
+  ["patient_code", "name_kanji", "name_kana", "birth_date", "gender", "patient_type"],
   ["insurance_type", "main_diagnosis"],
   ["rehab_start_date", "onset_date", "onset_type", "therapist_id"],
   [],
@@ -54,6 +55,10 @@ const GENDER_OPTIONS = [
   { value: "male", label: "男性" },
   { value: "female", label: "女性" },
   { value: "other", label: "その他" },
+];
+const PATIENT_TYPE_OPTIONS = [
+  { value: "outpatient", label: "外来通院" },
+  { value: "inpatient", label: "入院中" },
 ];
 const INSURANCE_OPTIONS = [
   { value: "medical", label: "医療保険" },
@@ -86,6 +91,7 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
       name_kana: "",
       birth_date: "",
       gender: "male",
+      patient_type: "outpatient",
       insurance_type: "medical",
       main_diagnosis: "",
       disease_category: "musculoskeletal",
@@ -265,6 +271,32 @@ function Step1({ form }: { form: UseFormReturn<Form> }) {
           </SelectField>
         </div>
       </div>
+      <div className="space-y-1.5">
+        <Label>入院 / 外来</Label>
+        <div className="flex gap-2">
+          {PATIENT_TYPE_OPTIONS.map((o) => {
+            const selected = form.watch("patient_type") === o.value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() =>
+                  form.setValue("patient_type", o.value as "inpatient" | "outpatient", {
+                    shouldValidate: true,
+                  })
+                }
+                className={`flex-1 rounded-lg border py-2.5 text-sm font-medium transition-colors ${
+                  selected
+                    ? "border-[#111] bg-[#111] text-white"
+                    : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111]"
+                }`}
+              >
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -417,6 +449,7 @@ function Step4({
     ["氏名", `${v.name_kanji}（${v.name_kana}）`],
     ["生年月日", `${v.birth_date}（${age}歳）`],
     ["性別", GENDER_OPTIONS.find((o) => o.value === v.gender)?.label ?? ""],
+    ["入院 / 外来", PATIENT_TYPE_OPTIONS.find((o) => o.value === v.patient_type)?.label ?? ""],
     ["保険種別", INSURANCE_OPTIONS.find((o) => o.value === v.insurance_type)?.label ?? ""],
     ["主病名", v.main_diagnosis],
     ["疾患別区分", DISEASE_LABEL[v.disease_category] ?? ""],

@@ -10,6 +10,7 @@ export const insuranceTypeEnum = pgEnum("insurance_type", [
 ]);
 export const onsetTypeEnum = pgEnum("onset_type", ["onset", "surgery", "acute_exacerbation"]);
 export const facilityGradeEnum = pgEnum("facility_grade", ["grade_1", "grade_2", "grade_3"]);
+export const patientTypeEnum = pgEnum("patient_type", ["inpatient", "outpatient"]);
 export const diseaseCategoryEnum = pgEnum("disease_category", [
   "cerebrovascular",
   "musculoskeletal",
@@ -38,6 +39,7 @@ export const patients = pgTable("patients", {
   therapist_id: uuid("therapist_id")
     .notNull()
     .references(() => staffs.id),
+  patient_type: patientTypeEnum("patient_type").notNull().default("outpatient"),
   is_nursing_care: boolean("is_nursing_care").notNull().default(false),
   medical_history: text("medical_history"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -56,6 +56,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
         ["氏名", `${patient.name_kanji}（${patient.name_kana}）`],
         ["生年月日", `${patient.birth_date}（${age}歳）`],
         ["性別", GENDER[patient.gender]],
+        ["入院 / 外来", patient.patient_type === "inpatient" ? "入院中" : "外来通院"],
       ],
     },
     {

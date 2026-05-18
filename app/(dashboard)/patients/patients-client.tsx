@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
 import {
   useReactTable,
   getCoreRowModel,
@@ -14,7 +13,15 @@ import {
 import { archivePatient, restorePatient } from "@/lib/actions/patient";
 import type { PatientRow } from "@/lib/actions/patient";
 import { differenceInYears, parseISO } from "date-fns";
-import { Search, Archive, RotateCcw, ChevronRight } from "lucide-react";
+import {
+  Search,
+  Archive,
+  RotateCcw,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
@@ -36,22 +43,39 @@ const diseaseCategoryLabel = {
   cardiovascular: "心大血管",
   respiratory: "呼吸器",
 };
+const patientTypeLabel = { inpatient: "入院中", outpatient: "外来" };
+const patientTypeStyle = {
+  inpatient: "bg-[#f0f7ff] text-[#0070f3]",
+  outpatient: "bg-[#f5f5f5] text-[#888]",
+};
 
 type Staff = { id: string; name: string; occupation: string };
 type Props = { patients: PatientRow[]; tenantId: string; staffs: Staff[] };
+
+type TypeFilter = "all" | "inpatient" | "outpatient";
+
+function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
+  if (!sorted) return <ChevronsUpDown size={12} className="ml-1 text-[#ccc]" />;
+  return sorted === "asc" ? (
+    <ChevronUp size={12} className="ml-1 text-[#111]" />
+  ) : (
+    <ChevronDown size={12} className="ml-1 text-[#111]" />
+  );
+}
 
 export default function PatientsClient({ patients: initial, tenantId }: Props) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [archiveTarget, setArchiveTarget] = useState<PatientRow | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const filtered = useMemo(
     () =>
       initial.filter((p) => {
-        const isArchived = !!p.deleted_at;
-        if (isArchived !== showArchived) return false;
+        if (!!p.deleted_at !== showArchived) return false;
+        if (typeFilter !== "all" && p.patient_type !== typeFilter) return false;
         if (!search) return true;
         const q = search.toLowerCase();
         return (
@@ -60,13 +84,14 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
           p.patient_code.toLowerCase().includes(q)
         );
       }),
-    [initial, search, showArchived]
+    [initial, search, showArchived, typeFilter]
   );
 
   const columns: ColumnDef<PatientRow>[] = [
     {
       accessorKey: "patient_code",
       header: "ID",
+      enableSorting: false,
       cell: ({ getValue }) => (
         <span className="font-mono text-xs text-[#888]">{getValue() as string}</span>
       ),
@@ -74,6 +99,7 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
     {
       accessorKey: "name_kanji",
       header: "氏名",
+      enableSorting: true,
       cell: ({ row }) => (
         <div>
           <p className="font-medium text-[#111]">{row.original.name_kanji}</p>
@@ -84,32 +110,36 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
     {
       accessorKey: "birth_date",
       header: "年齢",
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <span className="text-sm text-[#888]">
+          {differenceInYears(new Date(), parseISO(getValue() as string))}歳
+        </span>
+      ),
+    },
+    {
+      accessorKey: "patient_type",
+      header: "区分",
+      enableSorting: true,
       cell: ({ getValue }) => {
-        const age = differenceInYears(new Date(), parseISO(getValue() as string));
-        return <span className="text-sm text-[#888]">{age}歳</span>;
+        const v = getValue() as keyof typeof patientTypeLabel;
+        return (
+          <span className={`rounded px-2 py-0.5 text-xs font-medium ${patientTypeStyle[v] ?? ""}`}>
+            {patientTypeLabel[v] ?? v}
+          </span>
+        );
       },
     },
     {
-      accessorKey: "gender",
-      header: "性別",
-      cell: ({ getValue }) => (
-        <span className="text-sm text-[#888]">
-          {genderLabel[getValue() as keyof typeof genderLabel]}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "insurance_type",
-      header: "保険",
-      cell: ({ getValue }) => (
-        <span className="rounded bg-[#f5f5f5] px-2 py-0.5 text-xs text-[#888]">
-          {insuranceLabel[getValue() as keyof typeof insuranceLabel]}
-        </span>
-      ),
+      accessorKey: "therapist_name",
+      header: "担当療法士",
+      enableSorting: true,
+      cell: ({ getValue }) => <span className="text-sm text-[#888]">{getValue() as string}</span>,
     },
     {
       accessorKey: "disease_category",
       header: "疾患区分",
+      enableSorting: false,
       cell: ({ getValue }) => (
         <span className="text-sm text-[#888]">
           {diseaseCategoryLabel[getValue() as keyof typeof diseaseCategoryLabel]}
@@ -117,13 +147,19 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
       ),
     },
     {
-      accessorKey: "therapist_name",
-      header: "担当",
-      cell: ({ getValue }) => <span className="text-sm text-[#888]">{getValue() as string}</span>,
+      accessorKey: "insurance_type",
+      header: "保険",
+      enableSorting: false,
+      cell: ({ getValue }) => (
+        <span className="rounded bg-[#f5f5f5] px-2 py-0.5 text-xs text-[#888]">
+          {insuranceLabel[getValue() as keyof typeof insuranceLabel]}
+        </span>
+      ),
     },
     {
       id: "actions",
       header: "",
+      enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-1">
           {showArchived ? (
@@ -165,6 +201,12 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
     getFilteredRowModel: getFilteredRowModel(),
   });
 
+  const typeButtons: { value: TypeFilter; label: string }[] = [
+    { value: "all", label: "すべて" },
+    { value: "outpatient", label: "外来" },
+    { value: "inpatient", label: "入院中" },
+  ];
+
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -177,6 +219,22 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
             className="pl-8"
           />
         </div>
+
+        {/* 入院/外来フィルター */}
+        <div className="flex overflow-hidden rounded-lg border border-[#eaeaea] bg-white">
+          {typeButtons.map((btn) => (
+            <button
+              key={btn.value}
+              onClick={() => setTypeFilter(btn.value)}
+              className={`px-3 py-2 text-sm transition-colors ${
+                typeFilter === btn.value ? "bg-[#111] text-white" : "text-[#888] hover:bg-[#fafafa]"
+              }`}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
+
         <button
           onClick={() => setShowArchived((v) => !v)}
           className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
@@ -187,6 +245,7 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
         >
           {showArchived ? "アーカイブ表示中" : "アーカイブを表示"}
         </button>
+
         <p className="text-sm text-[#888]">{filtered.length}名</p>
       </div>
 
@@ -198,9 +257,15 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
                 {hg.headers.map((h) => (
                   <th
                     key={h.id}
-                    className="px-4 py-3 text-left text-xs font-medium text-[#888] first:pl-5"
+                    className={`px-4 py-3 text-left text-xs font-medium text-[#888] first:pl-5 ${
+                      h.column.getCanSort() ? "cursor-pointer select-none hover:text-[#111]" : ""
+                    }`}
+                    onClick={h.column.getToggleSortingHandler()}
                   >
-                    {flexRender(h.column.columnDef.header, h.getContext())}
+                    <span className="flex items-center">
+                      {flexRender(h.column.columnDef.header, h.getContext())}
+                      {h.column.getCanSort() && <SortIcon sorted={h.column.getIsSorted()} />}
+                    </span>
                   </th>
                 ))}
               </tr>
@@ -243,8 +308,7 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>患者をアーカイブしますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong>{archiveTarget?.name_kanji}</strong>{" "}
-              をアーカイブします。スケジュール登録ができなくなります。後から復帰できます。
+              <strong>{archiveTarget?.name_kanji}</strong> をアーカイブします。後から復帰できます。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

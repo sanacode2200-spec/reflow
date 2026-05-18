@@ -25,6 +25,7 @@ const schema = z.object({
   name_kana: z.string().min(1),
   birth_date: z.string().min(1),
   gender: z.enum(["male", "female", "other"]),
+  patient_type: z.enum(["inpatient", "outpatient"]),
   insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
   main_diagnosis: z.string().min(1),
   disease_category: z.enum([
@@ -68,6 +69,7 @@ export default function PatientEditModal({
       name_kana: patient.name_kana,
       birth_date: patient.birth_date,
       gender: patient.gender,
+      patient_type: patient.patient_type,
       insurance_type: patient.insurance_type,
       main_diagnosis: patient.main_diagnosis,
       disease_category: patient.disease_category,
@@ -131,6 +133,29 @@ export default function PatientEditModal({
               <div className="space-y-1.5">
                 <Label>氏名（カナ）</Label>
                 <Input {...form.register("name_kana")} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>入院 / 外来</Label>
+              <div className="flex gap-2">
+                {[
+                  { value: "outpatient", label: "外来通院" },
+                  { value: "inpatient", label: "入院中" },
+                ].map((o) => {
+                  const selected = form.watch("patient_type") === o.value;
+                  return (
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() =>
+                        form.setValue("patient_type", o.value as "inpatient" | "outpatient")
+                      }
+                      className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${selected ? "border-[#111] bg-[#111] text-white" : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111]"}`}
+                    >
+                      {o.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div className="space-y-1.5">
