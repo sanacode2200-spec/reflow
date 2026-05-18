@@ -43,7 +43,7 @@ export async function getSchedules(
       units: schedules.units,
       recurrence_rule: schedules.recurrence_rule,
       recurrence_group_id: schedules.recurrence_group_id,
-      patient_name: patients.name,
+      patient_name: patients.name_kanji,
       therapist_name: staffs.name,
       session_status: sessions.status,
       session_id: sessions.id,

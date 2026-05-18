@@ -4,7 +4,8 @@ import { staffs } from "./staffs";
 
 export const genderEnum = pgEnum("gender", ["male", "female", "other"]);
 export const insuranceTypeEnum = pgEnum("insurance_type", ["medical", "workers_comp", "auto"]);
-export const onsetDateTypeEnum = pgEnum("onset_date_type", ["onset", "surgery", "exacerbation"]);
+export const onsetTypeEnum = pgEnum("onset_type", ["onset", "surgery", "exacerbation"]);
+export const facilityGradeEnum = pgEnum("facility_grade", ["grade_1", "grade_2", "grade_3"]);
 export const diseaseCategoryEnum = pgEnum("disease_category", [
   "cerebrovascular",
   "musculoskeletal",
@@ -19,19 +20,20 @@ export const patients = pgTable("patients", {
     .notNull()
     .references(() => tenants.id),
   patient_code: text("patient_code").notNull(),
-  name: text("name").notNull(),
+  name_kanji: text("name_kanji").notNull(),
   name_kana: text("name_kana").notNull(),
   birth_date: date("birth_date").notNull(),
   gender: genderEnum("gender").notNull(),
   insurance_type: insuranceTypeEnum("insurance_type").notNull().default("medical"),
-  diagnosis: text("diagnosis").notNull(),
+  main_diagnosis: text("main_diagnosis").notNull(),
   disease_category: diseaseCategoryEnum("disease_category").notNull().default("musculoskeletal"),
+  facility_grade: facilityGradeEnum("facility_grade").notNull().default("grade_2"),
   rehab_start_date: date("rehab_start_date").notNull(),
   onset_date: date("onset_date").notNull(),
-  onset_date_type: onsetDateTypeEnum("onset_date_type").notNull().default("onset"),
+  onset_type: onsetTypeEnum("onset_type").notNull().default("onset"),
   therapist_id: uuid("therapist_id").references(() => staffs.id),
-  is_care_insured: boolean("is_care_insured").notNull().default(false),
-  notes: text("notes"),
+  is_nursing_care: boolean("is_nursing_care").notNull().default(false),
+  medical_history: text("medical_history"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }),
   deleted_at: timestamp("deleted_at", { withTimezone: true }),
