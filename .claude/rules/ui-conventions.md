@@ -44,11 +44,16 @@ colors: {
 
 ## ステータス配色
 
-| ステータス            | 枠線           | 背景      | テキスト  |
-| --------------------- | -------------- | --------- | --------- |
-| 予約（scheduled）     | `#eaeaea` 実線 | `#fafafa` | `#888`    |
-| 一時保存（draft）     | `#f97316` 点線 | `#ffedd5` | `#ea580c` |
-| 実施済み（completed） | `#0070f3` 実線 | `#f0f7ff` | `#0070f3` |
+予約枠は「白カード ＋ スタッフカラー左border accent」スタイル。ステータスは背景色のみで区別する。
+
+| ステータス            | 左border                | 背景      | テキスト  |
+| --------------------- | ----------------------- | --------- | --------- |
+| 予約（scheduled）     | `staffs.color` 実線 3px | `#ffffff` | `#3f3f46` |
+| 一時保存（draft）     | `staffs.color` 点線 3px | `#fff7ed` | `#c2410c` |
+| 実施済み（completed） | `staffs.color` 実線 3px | `#eff6ff` | `#1d4ed8` |
+
+- `staffs.color` は staffs テーブルの `color` カラム（HEX 6桁）から取得
+- box-shadow でカードを白背景から浮かせる（`.fc-event` に適用）
 
 ## 差別化ポイント
 
@@ -61,8 +66,25 @@ colors: {
 
 - **表示開始時刻**：`slotMinTime: '08:00:00'`
 - **時間刻み切り替えボタン**：20分 / 10分 / 5分（`slotDuration` を動的変更）
+- **スナップ単位**：`snapDuration: '00:05:00'`（固定）。ドラッグ・リサイズは5分単位
 - **5分刻み時の行高さ**：`.fc-timegrid-slot` の height を通常の半分に縮小（20分・10分刻みは現状維持）
 - **予約枠テキスト**：枠内は「開始時刻（HH:mm）＋患者名」のみ（1行・truncate）
+- **本日列**：`.fc-day-today { background: #f0f7ff }` （薄ブルー）
+- **リサイズ**：`eventResize` で終了時刻・単位数を自動更新（`scheduled` のみ可）
+- **単位数計算**：`calcUnitsFromMinutes(diffMin)` → `lib/rehab/calculator.ts`
+
+### スタッフフィルター
+
+- ログイン中スタッフは常に一番左・常時選択（解除不可）
+- `therapist-filter.tsx` でログインスタッフを先頭にソート
+
+### 右クリックメニュー
+
+| 項目 | 動作                                                | 条件           |
+| ---- | --------------------------------------------------- | -------------- |
+| 編集 | `ScheduleCreatePanel` を編集モードで開く            | 常時           |
+| 複製 | 同患者・担当者・時間帯で `ScheduleCreatePanel` 開く | 常時           |
+| 削除 | 確認ダイアログ → 論理削除                           | scheduled のみ |
 
 ### ツールチップ（PCのみ）
 
@@ -76,9 +98,8 @@ colors: {
 - 予約枠シングルクリック or /records 行クリックで開く
 - 保存後は `router.refresh()` で一覧を再取得
 
-## 予約コピペ（2方式）
+## ScheduleCreatePanel（新規作成・編集共用）
 
-| 方式 | 操作                                          | 対応環境      |
-| ---- | --------------------------------------------- | ------------- |
-| A    | 右クリックメニュー →「複製」→ 日時選択        | PC            |
-| B    | 右パネルの「この予約を複製」ボタン → 日時選択 | PC/スマホ共通 |
+- `editSchedule` prop を渡すと編集モードに切り替わる
+- 新規作成時のみ「他の日にもコピー」（複数日付選択）セクションを表示
+- `PanelIntent` discriminated union で create/edit を管理（schedule-client.tsx）

@@ -6,9 +6,11 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventDropArg, EventContentArg } from "@fullcalendar/core";
+import type { EventResizeDoneArg } from "@fullcalendar/interaction";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { deleteSchedule, moveSchedule } from "@/lib/actions/schedule";
+import { calcUnitsFromMinutes } from "@/lib/rehab/calculator";
 import type { ScheduleWithRelations } from "@/lib/actions/schedule";
 import {
   AlertDialog,
@@ -25,7 +27,9 @@ type Props = {
   schedules: ScheduleWithRelations[];
   tenantId: string;
   onEventClick: (scheduleId: string) => void;
+  onEditSchedule: (schedule: ScheduleWithRelations) => void;
   onSelect: (start: Date, end: Date) => void;
+  onDuplicate: (schedule: ScheduleWithRelations) => void;
   onRefresh: () => void;
 };
 
@@ -41,18 +45,19 @@ type DeleteTarget = {
   schedule: ScheduleWithRelations;
 } | null;
 
-const statusColors: Record<string, { border: string; bg: string; text: string; dashed?: boolean }> =
-  {
-    scheduled: { border: "#eaeaea", bg: "#fafafa", text: "#888" },
-    draft: { border: "#f97316", bg: "#ffedd5", text: "#ea580c", dashed: true },
-    completed: { border: "#0070f3", bg: "#f0f7ff", text: "#0070f3" },
-  };
+const statusBg: Record<string, { bg: string; text: string; dashed?: boolean }> = {
+  scheduled: { bg: "#ffffff", text: "#3f3f46" },
+  draft: { bg: "#fff7ed", text: "#c2410c", dashed: true },
+  completed: { bg: "#eff6ff", text: "#1d4ed8" },
+};
 
 export default function CalendarView({
   schedules,
   tenantId,
   onEventClick,
+  onEditSchedule,
   onSelect,
+  onDuplicate,
   onRefresh,
 }: Props) {
   const calendarRef = useRef<FullCalendar>(null);
@@ -70,16 +75,16 @@ export default function CalendarView({
 
   const events = schedules.map((s) => {
     const status = s.session_status ?? "scheduled";
-    const colors = statusColors[status] ?? statusColors["scheduled"]!;
+    const bg = statusBg[status] ?? statusBg["scheduled"]!;
     return {
       id: s.id,
       title: `${format(s.start_at, "HH:mm")} ${s.patient_name}`,
       start: s.start_at,
       end: s.end_at,
       extendedProps: { schedule: s, status },
-      borderColor: colors.border,
-      backgroundColor: colors.bg,
-      textColor: colors.text,
+      borderColor: "transparent",
+      backgroundColor: bg.bg,
+      textColor: bg.text,
     };
   });
 
@@ -116,17 +121,28 @@ export default function CalendarView({
 
   useEffect(() => {
     const close = () => setContextMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("click", close);
-    window.addEventListener("keydown", (e) => e.key === "Escape" && close());
-    return () => window.removeEventListener("click", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   const renderEventContent = (arg: EventContentArg) => {
-    const schedule = arg.event.extendedProps["schedule"] as ScheduleWithRelations;
+    const schedule = arg.event.extendedProps["schedule"] as ScheduleWithRelations | undefined;
+    const status = (arg.event.extendedProps["status"] as string) ?? "scheduled";
+    const bg = statusBg[status] ?? statusBg["scheduled"]!;
+    const accentColor = schedule?.therapist_color ?? "#a1a1aa";
     return (
       <div
-        className="h-full w-full cursor-pointer truncate overflow-hidden px-1 text-xs leading-tight"
-        onContextMenu={(e) => handleContextMenu(e, schedule)}
+        className="h-full w-full cursor-pointer overflow-hidden"
+        style={{
+          borderLeft: `3px ${bg.dashed ? "dashed" : "solid"} ${accentColor}`,
+          paddingLeft: "5px",
+        }}
+        onContextMenu={(e) => schedule && handleContextMenu(e, schedule)}
         onMouseEnter={(e) => {
           if (!schedule) return;
           const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -134,7 +150,7 @@ export default function CalendarView({
         }}
         onMouseLeave={() => setTooltip(null)}
       >
-        {arg.event.title}
+        <span className="block truncate text-xs leading-tight">{arg.event.title}</span>
       </div>
     );
   };
@@ -164,9 +180,9 @@ export default function CalendarView({
 
       <style>{`
         .fc-timegrid-slot { height: ${slotMinHeight}px !important; }
-        .fc-event { border-style: solid; }
-        .fc-event.status-draft { border-style: dashed !important; }
-        .fc-today-highlight .fc-day-today { background: #f0f7ff !important; }
+        .fc-event { border: none !important; box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04); border-radius: 4px !important; }
+        .fc-event:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06); }
+        .fc-day-today { background: #f0f7ff !important; }
         .fc-timegrid-now-indicator-line { border-color: #0070f3 !important; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #eaeaea; border-radius: 3px; }
@@ -191,6 +207,7 @@ export default function CalendarView({
           hour12: false,
         }}
         slotDuration={slotDuration}
+        snapDuration="00:05:00"
         businessHours={{ daysOfWeek: [1, 2, 3, 4, 5, 6], startTime: "08:00", endTime: "18:00" }}
         hiddenDays={[0]}
         nowIndicator
@@ -220,7 +237,31 @@ export default function CalendarView({
             arg.revert();
             return;
           }
-          moveSchedule(schedule.id, tenantId, arg.event.start, arg.event.end)
+          moveSchedule(schedule.id, tenantId, schedule.therapist_id, arg.event.start, arg.event.end)
+            .then(() => onRefresh())
+            .catch(() => arg.revert());
+        }}
+        eventResize={(arg: EventResizeDoneArg) => {
+          if (!arg.event.start || !arg.event.end) {
+            arg.revert();
+            return;
+          }
+          const schedule = arg.event.extendedProps["schedule"] as ScheduleWithRelations;
+          const canEdit = !schedule.session_status || schedule.session_status === "scheduled";
+          if (!canEdit) {
+            arg.revert();
+            return;
+          }
+          const diffMin = (arg.event.end.getTime() - arg.event.start.getTime()) / 60000;
+          const newUnits = calcUnitsFromMinutes(diffMin);
+          moveSchedule(
+            schedule.id,
+            tenantId,
+            schedule.therapist_id,
+            arg.event.start,
+            arg.event.end,
+            newUnits
+          )
             .then(() => onRefresh())
             .catch(() => arg.revert());
         }}
@@ -235,23 +276,32 @@ export default function CalendarView({
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            className="w-full px-4 py-2 text-left text-sm text-[#888] hover:bg-[#fafafa]"
+            className="w-full px-4 py-2 text-left text-sm text-[#111] hover:bg-[#fafafa]"
             onClick={() => {
-              onEventClick(contextMenu.schedule.id);
+              onEditSchedule(contextMenu.schedule);
               setContextMenu(null);
             }}
           >
-            この予約を複製
+            編集
+          </button>
+          <button
+            className="w-full px-4 py-2 text-left text-sm text-[#111] hover:bg-[#fafafa]"
+            onClick={() => {
+              onDuplicate(contextMenu.schedule);
+              setContextMenu(null);
+            }}
+          >
+            複製
           </button>
           <div className="my-1 border-t border-[#eaeaea]" />
           {contextMenu.schedule.session_status === "scheduled" ||
           contextMenu.schedule.session_status === null ? (
             <button
               className="w-full px-4 py-2 text-left text-sm hover:bg-[#fafafa]"
-              style={{ color: "#ee0000" }}
+              style={{ color: "#dc2626" }}
               onClick={handleDeleteClick}
             >
-              この予約を削除
+              削除
             </button>
           ) : (
             <button
@@ -282,8 +332,8 @@ export default function CalendarView({
               className="rounded px-1.5 py-0.5 text-xs"
               style={{
                 background:
-                  statusColors[tooltip.schedule.session_status ?? "scheduled"]?.bg ?? "#fafafa",
-                color: statusColors[tooltip.schedule.session_status ?? "scheduled"]?.text ?? "#888",
+                  statusBg[tooltip.schedule.session_status ?? "scheduled"]?.bg ?? "#fafafa",
+                color: statusBg[tooltip.schedule.session_status ?? "scheduled"]?.text ?? "#888",
               }}
             >
               {tooltip.schedule.session_status === "completed"

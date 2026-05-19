@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,11 +18,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const STAFF_COLORS = [
+  "#0070f3", // Blue   — Vercel signature
+  "#7928ca", // Purple
+  "#c026d3", // Fuchsia
+  "#0d9488", // Teal
+  "#16a34a", // Green
+  "#ea580c", // Orange
+  "#dc2626", // Red
+  "#d97706", // Amber
+] as const;
+
+const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
 const createSchema = z.object({
   name: z.string().min(1, "氏名を入力してください"),
   name_kana: z.string().min(1, "カナを入力してください"),
   role: z.enum(["admin", "therapist"]),
   occupation: z.enum(["pt", "ot", "st"]),
+  color: colorSchema,
   staff_code: z.string().regex(/^\d{4}$/, "数字4桁で入力してください"),
   password: z.string().min(4, "4文字以上で入力してください"),
   max_units_per_day: z.number().int().min(1),
@@ -34,6 +48,7 @@ const editSchema = z.object({
   name_kana: z.string().min(1, "カナを入力してください"),
   role: z.enum(["admin", "therapist"]),
   occupation: z.enum(["pt", "ot", "st"]),
+  color: colorSchema,
   max_units_per_day: z.number().int().min(1),
   max_units_per_week: z.number().int().min(1),
 });
@@ -71,6 +86,7 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
       name_kana: "",
       role: "therapist",
       occupation: "pt",
+      color: "#0070f3",
       staff_code: "",
       password: "",
       max_units_per_day: 18,
@@ -85,10 +101,25 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
       name_kana: staff?.name_kana ?? "",
       role: staff?.role ?? "therapist",
       occupation: staff?.occupation ?? "pt",
+      color: staff?.color ?? "#0070f3",
       max_units_per_day: staff?.max_units_per_day ?? 18,
       max_units_per_week: staff?.max_units_per_week ?? 108,
     },
   });
+
+  useEffect(() => {
+    if (open && staff) {
+      editForm.reset({
+        name: staff.name,
+        name_kana: staff.name_kana,
+        role: staff.role,
+        occupation: staff.occupation,
+        color: staff.color,
+        max_units_per_day: staff.max_units_per_day,
+        max_units_per_week: staff.max_units_per_week,
+      });
+    }
+  }, [open, staff]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     formState: { isSubmitting: createSubmitting },
@@ -219,6 +250,39 @@ function FormFields({
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>カラー</Label>
+        <div className="flex flex-wrap gap-2">
+          {STAFF_COLORS.map((c) => {
+            const selected = f.watch("color") === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => f.setValue("color", c)}
+                className="flex h-7 w-7 items-center justify-center rounded-full transition-all hover:scale-110"
+                style={{
+                  backgroundColor: c,
+                  boxShadow: selected ? `0 0 0 2px #fff, 0 0 0 4px ${c}` : "none",
+                }}
+              >
+                {selected && (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path
+                      d="M2 6l3 3 5-5"
+                      stroke="#fff"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

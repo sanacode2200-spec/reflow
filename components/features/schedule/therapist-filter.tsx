@@ -12,6 +12,12 @@ type Props = {
 const occupationLabel: Record<string, string> = { pt: "PT", ot: "OT", st: "ST" };
 
 export default function TherapistFilter({ staffs, currentStaffId, selectedIds, onChange }: Props) {
+  const sorted = [...staffs].sort((a, b) => {
+    if (a.id === currentStaffId) return -1;
+    if (b.id === currentStaffId) return 1;
+    return 0;
+  });
+
   const toggle = (id: string) => {
     if (id === currentStaffId) return;
     if (selectedIds.includes(id)) {
@@ -23,7 +29,7 @@ export default function TherapistFilter({ staffs, currentStaffId, selectedIds, o
 
   return (
     <div className="mb-4 flex flex-wrap gap-2">
-      {staffs.map((staff) => {
+      {sorted.map((staff) => {
         const isMe = staff.id === currentStaffId;
         const isSelected = selectedIds.includes(staff.id);
         return (

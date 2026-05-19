@@ -10,11 +10,14 @@ import { z } from "zod";
 
 const staffCodeSchema = z.string().regex(/^\d{4}$/, "スタッフIDは数字4桁で入力してください");
 
+const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
 const createStaffSchema = z.object({
   name: z.string().min(1),
   name_kana: z.string().min(1),
   role: z.enum(["admin", "therapist"]),
   occupation: z.enum(["pt", "ot", "st"]),
+  color: colorSchema,
   staff_code: staffCodeSchema,
   password: z.string().min(4, "パスワードは4文字以上で入力してください"),
   max_units_per_day: z.number().int().min(1).default(18),
@@ -26,6 +29,7 @@ const updateStaffSchema = z.object({
   name_kana: z.string().min(1),
   role: z.enum(["admin", "therapist"]),
   occupation: z.enum(["pt", "ot", "st"]),
+  color: colorSchema,
   max_units_per_day: z.number().int().min(1),
   max_units_per_week: z.number().int().min(1),
 });
@@ -70,6 +74,7 @@ export type StaffRow = {
   name_kana: string;
   role: "admin" | "therapist";
   occupation: "pt" | "ot" | "st";
+  color: string;
   staff_code: string | null;
   email: string | null;
   max_units_per_day: number;
@@ -95,6 +100,7 @@ export async function getStaffList(tenantId: string): Promise<StaffRow[]> {
     name_kana: r.name_kana,
     role: r.role,
     occupation: r.occupation,
+    color: r.color,
     staff_code: r.staff_code ?? null,
     email: r.email ?? null,
     max_units_per_day: r.max_units_per_day,
@@ -131,6 +137,7 @@ export async function createStaff(tenantId: string, input: unknown) {
       name_kana: data.name_kana,
       role: data.role,
       occupation: data.occupation,
+      color: data.color,
       staff_code: data.staff_code,
       email,
       max_units_per_day: data.max_units_per_day,
@@ -155,6 +162,18 @@ export async function updateStaff(tenantId: string, staffId: string, input: unkn
   await assertAdmin(tenantId);
   const data = updateStaffSchema.parse(input);
 
+  // 最後の管理者を降格させない
+  if (data.role !== "admin") {
+    const adminCount = await db
+      .select({ id: staffs.id })
+      .from(staffs)
+      .where(
+        and(eq(staffs.tenant_id, tenantId), eq(staffs.role, "admin"), isNull(staffs.deleted_at))
+      );
+    const isLastAdmin = adminCount.length === 1 && adminCount[0]?.id === staffId;
+    if (isLastAdmin) throw new Error("最後の管理者の権限を変更することはできません");
+  }
+
   await db
     .update(staffs)
     .set({
@@ -162,6 +181,7 @@ export async function updateStaff(tenantId: string, staffId: string, input: unkn
       name_kana: data.name_kana,
       role: data.role,
       occupation: data.occupation,
+      color: data.color,
       max_units_per_day: data.max_units_per_day,
       max_units_per_week: data.max_units_per_week,
       updated_at: new Date(),

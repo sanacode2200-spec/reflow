@@ -14,7 +14,9 @@ import {
   isBefore,
   startOfDay,
 } from "date-fns";
-import { createSchedule, getPatientsForSchedule } from "@/lib/actions/schedule";
+import { createSchedule, updateSchedule, getPatientsForSchedule } from "@/lib/actions/schedule";
+import { calcUnitsFromMinutes } from "@/lib/rehab/calculator";
+import type { ScheduleWithRelations } from "@/lib/actions/schedule";
 
 type PatientOption = { id: string; name_kanji: string; name_kana: string };
 type StaffOption = { id: string; name: string; occupation: string };
@@ -25,6 +27,9 @@ type Props = {
   defaultTherapistId: string | null;
   defaultStart: Date | null;
   defaultEnd: Date | null;
+  defaultPatientId?: string;
+  defaultPatientName?: string;
+  editSchedule?: ScheduleWithRelations;
   onClose: () => void;
   onCreated: () => void;
 };
@@ -151,10 +156,14 @@ export default function ScheduleCreatePanel({
   defaultTherapistId,
   defaultStart,
   defaultEnd,
+  defaultPatientId,
+  defaultPatientName,
+  editSchedule,
   onClose,
   onCreated,
 }: Props) {
-  const isOpen = defaultStart !== null;
+  const isEdit = !!editSchedule;
+  const isOpen = defaultStart !== null || isEdit;
 
   const [allPatients, setAllPatients] = useState<PatientOption[]>([]);
   const [patientSearch, setPatientSearch] = useState("");
@@ -176,26 +185,34 @@ export default function ScheduleCreatePanel({
   }, [isOpen, tenantId]);
 
   // プロップが変わったらフォームをリセット（レンダー中の state 調整パターン）
-  const [prevDefaultStart, setPrevDefaultStart] = useState(defaultStart);
-  if (prevDefaultStart !== defaultStart) {
-    setPrevDefaultStart(defaultStart);
-    if (defaultStart && defaultEnd) {
+  const resetKey = isEdit ? (editSchedule?.id ?? "") : (defaultStart?.toISOString() ?? "");
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
+    if (isEdit && editSchedule) {
+      setStartStr(format(editSchedule.start_at, "yyyy-MM-dd'T'HH:mm"));
+      setEndStr(format(editSchedule.end_at, "yyyy-MM-dd'T'HH:mm"));
+      setUnits(editSchedule.units);
+      setPatientId(editSchedule.patient_id);
+      setPatientName(editSchedule.patient_name);
+      setTherapistId(editSchedule.therapist_id);
+    } else if (defaultStart && defaultEnd) {
       setStartStr(format(defaultStart, "yyyy-MM-dd'T'HH:mm"));
       setEndStr(format(defaultEnd, "yyyy-MM-dd'T'HH:mm"));
       const diffMin = (defaultEnd.getTime() - defaultStart.getTime()) / 60000;
-      setUnits(Math.max(1, Math.min(9, Math.round(diffMin / 20))));
+      setUnits(calcUnitsFromMinutes(diffMin));
+      setPatientId(defaultPatientId ?? "");
+      setPatientName(defaultPatientName ?? "");
+      setTherapistId(defaultTherapistId ?? staffs[0]?.id ?? "");
     }
-    setPatientId("");
-    setPatientName("");
     setPatientSearch("");
-    setTherapistId(defaultTherapistId ?? staffs[0]?.id ?? "");
     setExtraDates(new Set());
     setError(null);
   }
 
   const calcUnits = (start: string, end: string) => {
     const diffMin = (new Date(end).getTime() - new Date(start).getTime()) / 60000;
-    return diffMin > 0 ? Math.max(1, Math.min(9, Math.round(diffMin / 20))) : units;
+    return diffMin > 0 ? calcUnitsFromMinutes(diffMin) : units;
   };
 
   const filtered = allPatients.filter(
@@ -219,14 +236,24 @@ export default function ScheduleCreatePanel({
     setError(null);
     startTransition(async () => {
       try {
-        await createSchedule(tenantId, {
-          patient_id: patientId,
-          therapist_id: therapistId,
-          start_at: new Date(startStr).toISOString(),
-          end_at: new Date(endStr).toISOString(),
-          units,
-          extra_dates: [...extraDates],
-        });
+        if (isEdit && editSchedule) {
+          await updateSchedule(editSchedule.id, tenantId, {
+            startAt: new Date(startStr),
+            endAt: new Date(endStr),
+            units,
+            therapistId: therapistId,
+            patientId: patientId,
+          });
+        } else {
+          await createSchedule(tenantId, {
+            patient_id: patientId,
+            therapist_id: therapistId,
+            start_at: new Date(startStr).toISOString(),
+            end_at: new Date(endStr).toISOString(),
+            units,
+            extra_dates: [...extraDates],
+          });
+        }
         onCreated();
         onClose();
       } catch (err) {
@@ -258,7 +285,9 @@ export default function ScheduleCreatePanel({
             className="fixed top-0 right-0 z-50 flex h-full w-full max-w-sm flex-col border-l border-[#eaeaea] bg-white shadow-xl"
           >
             <div className="flex items-center justify-between border-b border-[#eaeaea] px-5 py-4">
-              <h2 className="text-base font-semibold text-[#111]">予約を作成</h2>
+              <h2 className="text-base font-semibold text-[#111]">
+                {isEdit ? "予約を編集" : "予約を作成"}
+              </h2>
               <button
                 onClick={onClose}
                 className="rounded p-1 text-[#888] transition-colors hover:text-[#111]"
@@ -383,24 +412,26 @@ export default function ScheduleCreatePanel({
                   <p className="mt-1 text-xs text-[#888]">1単位=20分。患者1日上限6単位。</p>
                 </div>
 
-                {/* 複数日付選択 */}
-                <div>
-                  <div className="mb-1 flex items-center justify-between">
-                    <label className="text-xs font-medium text-[#888]">他の日にもコピー</label>
-                    {extraDates.size > 0 && (
-                      <span className="text-[10px] text-[#0070f3]">計 {totalCount} 件作成</span>
+                {/* 複数日付選択（新規作成時のみ） */}
+                {!isEdit && (
+                  <div>
+                    <div className="mb-1 flex items-center justify-between">
+                      <label className="text-xs font-medium text-[#888]">他の日にもコピー</label>
+                      {extraDates.size > 0 && (
+                        <span className="text-[10px] text-[#0070f3]">計 {totalCount} 件作成</span>
+                      )}
+                    </div>
+                    {startStr ? (
+                      <MultiDatePicker
+                        baseDate={new Date(startStr)}
+                        extraDates={extraDates}
+                        onToggle={toggleExtraDate}
+                      />
+                    ) : (
+                      <p className="text-xs text-[#888]">開始時刻を入力すると選択できます</p>
                     )}
                   </div>
-                  {startStr ? (
-                    <MultiDatePicker
-                      baseDate={new Date(startStr)}
-                      extraDates={extraDates}
-                      onToggle={toggleExtraDate}
-                    />
-                  ) : (
-                    <p className="text-xs text-[#888]">開始時刻を入力すると選択できます</p>
-                  )}
-                </div>
+                )}
 
                 {error && (
                   <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
@@ -417,9 +448,11 @@ export default function ScheduleCreatePanel({
                 >
                   {isPending
                     ? "保存中..."
-                    : totalCount > 1
-                      ? `${totalCount} 件の予約を作成`
-                      : "予約を作成"}
+                    : isEdit
+                      ? "変更を保存"
+                      : totalCount > 1
+                        ? `${totalCount} 件の予約を作成`
+                        : "予約を作成"}
                 </button>
               </div>
             </form>

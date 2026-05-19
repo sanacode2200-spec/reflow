@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import TherapistFilter from "@/components/features/schedule/therapist-filter";
 import SchedulePanel from "@/components/features/schedule/schedule-panel";
@@ -20,19 +21,33 @@ type Props = {
   tenantId: string;
 };
 
+type PanelIntent =
+  | {
+      mode: "create";
+      start: Date;
+      end: Date;
+      patientId?: string;
+      patientName?: string;
+      therapistId?: string;
+    }
+  | { mode: "edit"; schedule: ScheduleWithRelations }
+  | null;
+
 export default function ScheduleClient({
   schedules: initialSchedules,
   staffs,
   currentStaffId,
   tenantId,
 }: Props) {
+  const router = useRouter();
   const defaultSelected = currentStaffId ? [currentStaffId] : staffs.map((s) => s.id);
   const [selectedTherapistIds, setSelectedTherapistIds] = useState<string[]>(defaultSelected);
   const [openPanelId, setOpenPanelId] = useState<string | null>(null);
-  const [createSlot, setCreateSlot] = useState<{ start: Date; end: Date } | null>(null);
-  const [schedules] = useState(initialSchedules);
+  const [panelIntent, setPanelIntent] = useState<PanelIntent>(null);
 
-  const filteredSchedules = schedules.filter((s) => selectedTherapistIds.includes(s.therapist_id));
+  const filteredSchedules = initialSchedules.filter((s) =>
+    selectedTherapistIds.includes(s.therapist_id)
+  );
 
   const handleFilterChange = useCallback(
     (ids: string[]) => {
@@ -45,13 +60,23 @@ export default function ScheduleClient({
     [currentStaffId]
   );
 
-  const handleRefresh = useCallback(() => {
-    window.location.reload();
-  }, []);
+  const handleRefresh = useCallback(() => router.refresh(), [router]);
 
   const handleSelect = useCallback((start: Date, end: Date) => {
     setOpenPanelId(null);
-    setCreateSlot({ start, end });
+    setPanelIntent({ mode: "create", start, end });
+  }, []);
+
+  const handleDuplicate = useCallback((schedule: ScheduleWithRelations) => {
+    setOpenPanelId(null);
+    setPanelIntent({
+      mode: "create",
+      start: schedule.start_at,
+      end: schedule.end_at,
+      patientId: schedule.patient_id,
+      patientName: schedule.patient_name,
+      therapistId: schedule.therapist_id,
+    });
   }, []);
 
   return (
@@ -68,10 +93,15 @@ export default function ScheduleClient({
           schedules={filteredSchedules}
           tenantId={tenantId}
           onEventClick={(id) => {
-            setCreateSlot(null);
+            setPanelIntent(null);
             setOpenPanelId(id);
           }}
+          onEditSchedule={(schedule) => {
+            setOpenPanelId(null);
+            setPanelIntent({ mode: "edit", schedule });
+          }}
           onSelect={handleSelect}
+          onDuplicate={handleDuplicate}
           onRefresh={handleRefresh}
         />
       </div>
@@ -82,17 +112,24 @@ export default function ScheduleClient({
 
       <SchedulePanel
         scheduleId={openPanelId}
-        schedules={schedules}
+        schedules={initialSchedules}
         onClose={() => setOpenPanelId(null)}
       />
 
       <ScheduleCreatePanel
         tenantId={tenantId}
         staffs={staffs}
-        defaultTherapistId={currentStaffId}
-        defaultStart={createSlot?.start ?? null}
-        defaultEnd={createSlot?.end ?? null}
-        onClose={() => setCreateSlot(null)}
+        defaultTherapistId={
+          panelIntent?.mode === "create"
+            ? (panelIntent.therapistId ?? currentStaffId)
+            : currentStaffId
+        }
+        defaultStart={panelIntent?.mode === "create" ? panelIntent.start : null}
+        defaultEnd={panelIntent?.mode === "create" ? panelIntent.end : null}
+        defaultPatientId={panelIntent?.mode === "create" ? panelIntent.patientId : undefined}
+        defaultPatientName={panelIntent?.mode === "create" ? panelIntent.patientName : undefined}
+        editSchedule={panelIntent?.mode === "edit" ? panelIntent.schedule : undefined}
+        onClose={() => setPanelIntent(null)}
         onCreated={handleRefresh}
       />
     </div>

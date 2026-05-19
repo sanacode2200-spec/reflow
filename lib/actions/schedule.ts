@@ -31,6 +31,7 @@ export type ScheduleWithRelations = {
   recurrence_group_id: string | null;
   patient_name: string;
   therapist_name: string;
+  therapist_color: string;
   session_status: "scheduled" | "draft" | "completed" | null;
   session_id: string | null;
 };
@@ -59,6 +60,7 @@ export async function getSchedules(
       recurrence_group_id: schedules.recurrence_group_id,
       patient_name: patients.name_kanji,
       therapist_name: staffs.name,
+      therapist_color: staffs.color,
       session_status: sessions.status,
       session_id: sessions.id,
     })
@@ -296,11 +298,36 @@ export async function createSchedule(tenantId: string, input: unknown) {
   revalidatePath("/schedule");
 }
 
+async function checkOverlap(
+  tenantId: string,
+  therapistId: string,
+  excludeId: string,
+  startAt: Date,
+  endAt: Date
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: schedules.id })
+    .from(schedules)
+    .where(
+      and(
+        eq(schedules.tenant_id, tenantId),
+        eq(schedules.therapist_id, therapistId),
+        ne(schedules.id, excludeId),
+        isNull(schedules.deleted_at),
+        lt(schedules.start_at, endAt),
+        gt(schedules.end_at, startAt)
+      )
+    );
+  return rows.length > 0;
+}
+
 export async function moveSchedule(
   scheduleId: string,
   tenantId: string,
+  therapistId: string,
   startAt: Date,
-  endAt: Date
+  endAt: Date,
+  units?: number
 ) {
   const supabase = await createClient();
   const {
@@ -308,31 +335,51 @@ export async function moveSchedule(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const existing = await db.query.schedules.findFirst({
-    where: (s, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
-      andFn(eqFn(s.id, scheduleId), eqFn(s.tenant_id, tenantId), isNullFn(s.deleted_at)),
-  });
-  if (!existing) throw new Error("予約が見つかりません");
+  if (await checkOverlap(tenantId, therapistId, scheduleId, startAt, endAt))
+    throw new Error("移動先の時間帯に別の予約があります");
 
-  const overlaps = await db
-    .select({ id: schedules.id })
-    .from(schedules)
-    .where(
-      and(
-        eq(schedules.tenant_id, tenantId),
-        eq(schedules.therapist_id, existing.therapist_id),
-        ne(schedules.id, scheduleId),
-        isNull(schedules.deleted_at),
-        lt(schedules.start_at, endAt),
-        gt(schedules.end_at, startAt)
-      )
-    );
-  if (overlaps.length > 0) throw new Error("移動先の時間帯に別の予約があります");
-
-  await db
+  const result = await db
     .update(schedules)
-    .set({ start_at: startAt, end_at: endAt, updated_at: new Date() })
-    .where(and(eq(schedules.id, scheduleId), eq(schedules.tenant_id, tenantId)));
+    .set({
+      start_at: startAt,
+      end_at: endAt,
+      ...(units !== undefined ? { units } : {}),
+      updated_at: new Date(),
+    })
+    .where(and(eq(schedules.id, scheduleId), eq(schedules.tenant_id, tenantId)))
+    .returning({ id: schedules.id });
+  if (result.length === 0) throw new Error("予約が見つかりません");
+
+  revalidatePath("/schedule");
+}
+
+export async function updateSchedule(
+  scheduleId: string,
+  tenantId: string,
+  input: { startAt: Date; endAt: Date; units: number; therapistId: string; patientId: string }
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  if (await checkOverlap(tenantId, input.therapistId, scheduleId, input.startAt, input.endAt))
+    throw new Error("その時間帯に別の予約があります");
+
+  const result = await db
+    .update(schedules)
+    .set({
+      start_at: input.startAt,
+      end_at: input.endAt,
+      units: input.units,
+      therapist_id: input.therapistId,
+      patient_id: input.patientId,
+      updated_at: new Date(),
+    })
+    .where(and(eq(schedules.id, scheduleId), eq(schedules.tenant_id, tenantId)))
+    .returning({ id: schedules.id });
+  if (result.length === 0) throw new Error("予約が見つかりません");
 
   revalidatePath("/schedule");
 }

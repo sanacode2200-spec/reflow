@@ -29,7 +29,12 @@ export default async function StaffsPage() {
       and(eq(s.email, user.email ?? ""), eq(s.tenant_id, tenantId), isNull(s.deleted_at)),
   });
 
-  const staffList = await getStaffList(tenantId);
+  const rawList = await getStaffList(tenantId);
+  const staffList = [...rawList].sort((a, b) => {
+    if (a.id === currentStaff?.id) return -1;
+    if (b.id === currentStaff?.id) return 1;
+    return 0;
+  });
 
   return (
     <div className="p-6">

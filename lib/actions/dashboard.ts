@@ -65,75 +65,86 @@ export async function getDashboardData(tenantId: string): Promise<{
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
-  // 今日の予約数
-  const [todayCountRow] = await db
-    .select({ value: count() })
-    .from(schedules)
-    .where(
-      and(
-        eq(schedules.tenant_id, tenantId),
-        isNull(schedules.deleted_at),
-        gte(schedules.start_at, dayStart),
-        lte(schedules.start_at, dayEnd)
-      )
-    );
+  // ログイン中スタッフを特定
+  const currentStaff = await db.query.staffs.findFirst({
+    where: (s, { eq, and, isNull }) =>
+      and(eq(s.email, user.email ?? ""), eq(s.tenant_id, tenantId), isNull(s.deleted_at)),
+  });
 
-  // 今週の総単位数
-  const [weeklyUnitsRow] = await db
-    .select({ value: sum(schedules.units) })
-    .from(schedules)
-    .where(
-      and(
-        eq(schedules.tenant_id, tenantId),
-        isNull(schedules.deleted_at),
-        gte(schedules.start_at, weekStart),
-        lte(schedules.start_at, weekEnd)
-      )
-    );
+  const staffFilter = currentStaff ? eq(schedules.therapist_id, currentStaff.id) : undefined;
+  const patientStaffFilter = currentStaff ? eq(patients.therapist_id, currentStaff.id) : undefined;
 
-  // アクティブ患者数
-  const [patientCountRow] = await db
-    .select({ value: count() })
-    .from(patients)
-    .where(and(eq(patients.tenant_id, tenantId), isNull(patients.deleted_at)));
-
-  // 今日のスケジュール（患者・療法士・セッションステータス結合）
-  const todaySchedules = await db
-    .select({
-      id: schedules.id,
-      start_at: schedules.start_at,
-      end_at: schedules.end_at,
-      units: schedules.units,
-      patient_name: patients.name_kanji,
-      therapist_name: staffs.name,
-      therapist_occupation: staffs.occupation,
-      session_status: sessions.status,
-    })
-    .from(schedules)
-    .leftJoin(patients, eq(schedules.patient_id, patients.id))
-    .leftJoin(staffs, eq(schedules.therapist_id, staffs.id))
-    .leftJoin(sessions, and(eq(sessions.schedule_id, schedules.id), isNull(sessions.deleted_at)))
-    .where(
-      and(
-        eq(schedules.tenant_id, tenantId),
-        isNull(schedules.deleted_at),
-        gte(schedules.start_at, dayStart),
-        lte(schedules.start_at, dayEnd)
-      )
-    )
-    .orderBy(schedules.start_at);
-
-  // アラート計算（患者情報を取得してJS側で判定）
-  const allActivePatients = await db
-    .select({
-      id: patients.id,
-      name_kanji: patients.name_kanji,
-      rehab_start_date: patients.rehab_start_date,
-      onset_date: patients.onset_date,
-      disease_category: patients.disease_category,
-    })
-    .from(patients)
-    .where(and(eq(patients.tenant_id, tenantId), isNull(patients.deleted_at)));
+  const [[todayCountRow], [weeklyUnitsRow], [patientCountRow], todaySchedules, allActivePatients] =
+    await Promise.all([
+      db
+        .select({ value: count() })
+        .from(schedules)
+        .where(
+          and(
+            eq(schedules.tenant_id, tenantId),
+            isNull(schedules.deleted_at),
+            gte(schedules.start_at, dayStart),
+            lte(schedules.start_at, dayEnd),
+            staffFilter
+          )
+        ),
+      db
+        .select({ value: sum(schedules.units) })
+        .from(schedules)
+        .where(
+          and(
+            eq(schedules.tenant_id, tenantId),
+            isNull(schedules.deleted_at),
+            gte(schedules.start_at, weekStart),
+            lte(schedules.start_at, weekEnd),
+            staffFilter
+          )
+        ),
+      db
+        .select({ value: count() })
+        .from(patients)
+        .where(
+          and(eq(patients.tenant_id, tenantId), isNull(patients.deleted_at), patientStaffFilter)
+        ),
+      db
+        .select({
+          id: schedules.id,
+          start_at: schedules.start_at,
+          end_at: schedules.end_at,
+          units: schedules.units,
+          patient_name: patients.name_kanji,
+          therapist_name: staffs.name,
+          therapist_occupation: staffs.occupation,
+          session_status: sessions.status,
+        })
+        .from(schedules)
+        .leftJoin(patients, eq(schedules.patient_id, patients.id))
+        .leftJoin(staffs, eq(schedules.therapist_id, staffs.id))
+        .leftJoin(
+          sessions,
+          and(eq(sessions.schedule_id, schedules.id), isNull(sessions.deleted_at))
+        )
+        .where(
+          and(
+            eq(schedules.tenant_id, tenantId),
+            isNull(schedules.deleted_at),
+            gte(schedules.start_at, dayStart),
+            lte(schedules.start_at, dayEnd),
+            staffFilter
+          )
+        )
+        .orderBy(schedules.start_at),
+      db
+        .select({
+          id: patients.id,
+          name_kanji: patients.name_kanji,
+          rehab_start_date: patients.rehab_start_date,
+          onset_date: patients.onset_date,
+          disease_category: patients.disease_category,
+        })
+        .from(patients)
+        .where(and(eq(patients.tenant_id, tenantId), isNull(patients.deleted_at))),
+    ]);
 
   const alerts: AlertRow[] = [];
 
