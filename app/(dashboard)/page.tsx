@@ -1,5 +1,10 @@
 import { getTenantId } from "@/lib/actions/schedule";
-import { getDashboardData, type AlertRow, type TodayScheduleRow } from "@/lib/actions/dashboard";
+import {
+  getDashboardData,
+  type AlertRow,
+  type TodayScheduleRow,
+  type StatusCounts,
+} from "@/lib/actions/dashboard";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import Link from "next/link";
@@ -101,6 +106,71 @@ const ALERT_CONFIG = {
   expiry_warning: { color: "text-red-600", bg: "bg-red-50", border: "border-red-200" },
 } as const;
 
+// ---- 本日のステータス分布チャート ----
+function StatusChart({ counts, className }: { counts: StatusCounts; className?: string }) {
+  const total = counts.scheduled + counts.draft + counts.completed;
+  const items = [
+    {
+      key: "scheduled",
+      label: "予約",
+      count: counts.scheduled,
+      bg: "bg-[#E5E5E5]",
+      text: "text-[#404040]",
+    },
+    {
+      key: "draft",
+      label: "一時保存",
+      count: counts.draft,
+      bg: "bg-[#f97316]",
+      text: "text-white",
+    },
+    {
+      key: "completed",
+      label: "実施済み",
+      count: counts.completed,
+      bg: "bg-[#0070f3]",
+      text: "text-white",
+    },
+  ];
+
+  return (
+    <div className={`rounded-xl border border-[#eaeaea] bg-white p-5 ${className ?? ""}`}>
+      <p className="mb-3 text-xs font-medium text-[#888]">本日の予約ステータス</p>
+
+      {/* セグメントバー */}
+      {total > 0 ? (
+        <div className="mb-4 flex h-3 overflow-hidden rounded-full">
+          {items.map(({ key, count, bg }) =>
+            count > 0 ? (
+              <div
+                key={key}
+                className={`${bg} transition-all`}
+                style={{ width: `${(count / total) * 100}%` }}
+              />
+            ) : null
+          )}
+        </div>
+      ) : (
+        <div className="mb-4 h-3 rounded-full bg-[#F7F7F7]" />
+      )}
+
+      {/* 凡例 + 件数 */}
+      <div className="flex gap-4">
+        {items.map(({ key, label, count, bg, text }) => (
+          <div key={key} className="flex items-center gap-2">
+            <span
+              className={`inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${bg} ${text}`}
+            >
+              {count}
+            </span>
+            <span className="text-xs text-[#888]">{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AlertItem({ a }: { a: AlertRow }) {
   const cfg = ALERT_CONFIG[a.type];
   return (
@@ -117,7 +187,7 @@ function AlertItem({ a }: { a: AlertRow }) {
 
 export default async function DashboardPage() {
   const tenantId = await getTenantId();
-  const { stats, todaySchedules, alerts } = await getDashboardData(tenantId);
+  const { stats, statusCounts, todaySchedules, alerts } = await getDashboardData(tenantId);
   const today = new Date();
 
   const completedToday = todaySchedules.filter((s) => s.session_status === "completed").length;
@@ -133,7 +203,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPIカード */}
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="今日の予約" value={stats.todayCount} unit="件" icon={Calendar} />
         <StatCard label="今週の単位数" value={stats.weeklyUnits} unit="単位" icon={Clock} />
         <StatCard label="担当患者数" value={stats.activePatients} unit="名" icon={Users} />
@@ -145,6 +215,9 @@ export default async function DashboardPage() {
           accent={stats.alertCount > 0}
         />
       </div>
+
+      {/* 本日のステータス分布 */}
+      <StatusChart counts={statusCounts} className="mb-6" />
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* 今日のスケジュール */}

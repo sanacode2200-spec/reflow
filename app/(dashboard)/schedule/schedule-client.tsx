@@ -92,6 +92,8 @@ export default function ScheduleClient({
         <CalendarView
           schedules={filteredSchedules}
           tenantId={tenantId}
+          currentStaffId={currentStaffId}
+          orderedStaffIds={selectedTherapistIds}
           onEventClick={(id) => {
             setPanelIntent(null);
             setOpenPanelId(id);

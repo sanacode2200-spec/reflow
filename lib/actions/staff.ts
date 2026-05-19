@@ -10,14 +10,11 @@ import { z } from "zod";
 
 const staffCodeSchema = z.string().regex(/^\d{4}$/, "スタッフIDは数字4桁で入力してください");
 
-const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
-
 const createStaffSchema = z.object({
   name: z.string().min(1),
   name_kana: z.string().min(1),
   role: z.enum(["admin", "therapist"]),
   occupation: z.enum(["pt", "ot", "st"]),
-  color: colorSchema,
   staff_code: staffCodeSchema,
   password: z.string().min(4, "パスワードは4文字以上で入力してください"),
   max_units_per_day: z.number().int().min(1).default(18),
@@ -29,7 +26,6 @@ const updateStaffSchema = z.object({
   name_kana: z.string().min(1),
   role: z.enum(["admin", "therapist"]),
   occupation: z.enum(["pt", "ot", "st"]),
-  color: colorSchema,
   max_units_per_day: z.number().int().min(1),
   max_units_per_week: z.number().int().min(1),
 });
@@ -137,7 +133,6 @@ export async function createStaff(tenantId: string, input: unknown) {
       name_kana: data.name_kana,
       role: data.role,
       occupation: data.occupation,
-      color: data.color,
       staff_code: data.staff_code,
       email,
       max_units_per_day: data.max_units_per_day,
@@ -181,7 +176,6 @@ export async function updateStaff(tenantId: string, staffId: string, input: unkn
       name_kana: data.name_kana,
       role: data.role,
       occupation: data.occupation,
-      color: data.color,
       max_units_per_day: data.max_units_per_day,
       max_units_per_week: data.max_units_per_week,
       updated_at: new Date(),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -26,6 +26,8 @@ import {
 type Props = {
   schedules: ScheduleWithRelations[];
   tenantId: string;
+  currentStaffId: string | null;
+  orderedStaffIds: string[];
   onEventClick: (scheduleId: string) => void;
   onEditSchedule: (schedule: ScheduleWithRelations) => void;
   onSelect: (start: Date, end: Date) => void;
@@ -45,15 +47,27 @@ type DeleteTarget = {
   schedule: ScheduleWithRelations;
 } | null;
 
-const statusBg: Record<string, { bg: string; text: string; dashed?: boolean }> = {
+// ログイン者のステータス別背景色
+const myStatusBg: Record<string, { bg: string; text: string }> = {
   scheduled: { bg: "#ffffff", text: "#3f3f46" },
-  draft: { bg: "#fff7ed", text: "#c2410c", dashed: true },
+  draft: { bg: "#fff7ed", text: "#c2410c" },
   completed: { bg: "#eff6ff", text: "#1d4ed8" },
 };
+
+// 他スタッフ用グレー階調（選択順に暗くなる）
+const STAFF_GRAYS = [
+  { bg: "#F7F7F7", text: "#404040" },
+  { bg: "#E5E5E5", text: "#404040" },
+  { bg: "#737373", text: "#ffffff" },
+  { bg: "#404040", text: "#ffffff" },
+  { bg: "#171717", text: "#ffffff" },
+];
 
 export default function CalendarView({
   schedules,
   tenantId,
+  currentStaffId,
+  orderedStaffIds,
   onEventClick,
   onEditSchedule,
   onSelect,
@@ -73,9 +87,25 @@ export default function CalendarView({
 
   const slotMinHeight = slotDuration === "00:05:00" ? 12 : 24;
 
+  // 他スタッフのグレーマップ（選択順で色が決まる）
+  const otherStaffGrayMap = useMemo(() => {
+    const map: Record<string, { bg: string; text: string }> = {};
+    let idx = 0;
+    for (const id of orderedStaffIds) {
+      if (id !== currentStaffId) {
+        map[id] = STAFF_GRAYS[idx % STAFF_GRAYS.length]!;
+        idx++;
+      }
+    }
+    return map;
+  }, [orderedStaffIds, currentStaffId]);
+
   const events = schedules.map((s) => {
+    const isMe = s.therapist_id === currentStaffId;
     const status = s.session_status ?? "scheduled";
-    const bg = statusBg[status] ?? statusBg["scheduled"]!;
+    const style = isMe
+      ? (myStatusBg[status] ?? myStatusBg["scheduled"]!)
+      : (otherStaffGrayMap[s.therapist_id] ?? STAFF_GRAYS[0]!);
     return {
       id: s.id,
       title: `${format(s.start_at, "HH:mm")} ${s.patient_name}`,
@@ -83,8 +113,8 @@ export default function CalendarView({
       end: s.end_at,
       extendedProps: { schedule: s, status },
       borderColor: "transparent",
-      backgroundColor: bg.bg,
-      textColor: bg.text,
+      backgroundColor: style.bg,
+      textColor: style.text,
     };
   });
 
@@ -132,16 +162,9 @@ export default function CalendarView({
 
   const renderEventContent = (arg: EventContentArg) => {
     const schedule = arg.event.extendedProps["schedule"] as ScheduleWithRelations | undefined;
-    const status = (arg.event.extendedProps["status"] as string) ?? "scheduled";
-    const bg = statusBg[status] ?? statusBg["scheduled"]!;
-    const accentColor = schedule?.therapist_color ?? "#a1a1aa";
     return (
       <div
-        className="h-full w-full cursor-pointer overflow-hidden"
-        style={{
-          borderLeft: `3px ${bg.dashed ? "dashed" : "solid"} ${accentColor}`,
-          paddingLeft: "5px",
-        }}
+        className="h-full w-full cursor-pointer overflow-hidden px-1.5"
         onContextMenu={(e) => schedule && handleContextMenu(e, schedule)}
         onMouseEnter={(e) => {
           if (!schedule) return;
@@ -332,8 +355,8 @@ export default function CalendarView({
               className="rounded px-1.5 py-0.5 text-xs"
               style={{
                 background:
-                  statusBg[tooltip.schedule.session_status ?? "scheduled"]?.bg ?? "#fafafa",
-                color: statusBg[tooltip.schedule.session_status ?? "scheduled"]?.text ?? "#888",
+                  myStatusBg[tooltip.schedule.session_status ?? "scheduled"]?.bg ?? "#fafafa",
+                color: myStatusBg[tooltip.schedule.session_status ?? "scheduled"]?.text ?? "#888",
               }}
             >
               {tooltip.schedule.session_status === "completed"

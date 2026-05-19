@@ -48,8 +48,15 @@ export type DashboardStats = {
   alertCount: number;
 };
 
+export type StatusCounts = {
+  scheduled: number;
+  draft: number;
+  completed: number;
+};
+
 export async function getDashboardData(tenantId: string): Promise<{
   stats: DashboardStats;
+  statusCounts: StatusCounts;
   todaySchedules: TodayScheduleRow[];
   alerts: AlertRow[];
 }> {
@@ -74,77 +81,94 @@ export async function getDashboardData(tenantId: string): Promise<{
   const staffFilter = currentStaff ? eq(schedules.therapist_id, currentStaff.id) : undefined;
   const patientStaffFilter = currentStaff ? eq(patients.therapist_id, currentStaff.id) : undefined;
 
-  const [[todayCountRow], [weeklyUnitsRow], [patientCountRow], todaySchedules, allActivePatients] =
-    await Promise.all([
-      db
-        .select({ value: count() })
-        .from(schedules)
-        .where(
-          and(
-            eq(schedules.tenant_id, tenantId),
-            isNull(schedules.deleted_at),
-            gte(schedules.start_at, dayStart),
-            lte(schedules.start_at, dayEnd),
-            staffFilter
-          )
-        ),
-      db
-        .select({ value: sum(schedules.units) })
-        .from(schedules)
-        .where(
-          and(
-            eq(schedules.tenant_id, tenantId),
-            isNull(schedules.deleted_at),
-            gte(schedules.start_at, weekStart),
-            lte(schedules.start_at, weekEnd),
-            staffFilter
-          )
-        ),
-      db
-        .select({ value: count() })
-        .from(patients)
-        .where(
-          and(eq(patients.tenant_id, tenantId), isNull(patients.deleted_at), patientStaffFilter)
-        ),
-      db
-        .select({
-          id: schedules.id,
-          start_at: schedules.start_at,
-          end_at: schedules.end_at,
-          units: schedules.units,
-          patient_name: patients.name_kanji,
-          therapist_name: staffs.name,
-          therapist_occupation: staffs.occupation,
-          session_status: sessions.status,
-        })
-        .from(schedules)
-        .leftJoin(patients, eq(schedules.patient_id, patients.id))
-        .leftJoin(staffs, eq(schedules.therapist_id, staffs.id))
-        .leftJoin(
-          sessions,
-          and(eq(sessions.schedule_id, schedules.id), isNull(sessions.deleted_at))
+  const [
+    [todayCountRow],
+    [weeklyUnitsRow],
+    [patientCountRow],
+    todaySchedules,
+    allActivePatients,
+    weekSessionRows,
+  ] = await Promise.all([
+    db
+      .select({ value: count() })
+      .from(schedules)
+      .where(
+        and(
+          eq(schedules.tenant_id, tenantId),
+          isNull(schedules.deleted_at),
+          gte(schedules.start_at, dayStart),
+          lte(schedules.start_at, dayEnd),
+          staffFilter
         )
-        .where(
-          and(
-            eq(schedules.tenant_id, tenantId),
-            isNull(schedules.deleted_at),
-            gte(schedules.start_at, dayStart),
-            lte(schedules.start_at, dayEnd),
-            staffFilter
-          )
+      ),
+    db
+      .select({ value: sum(schedules.units) })
+      .from(schedules)
+      .where(
+        and(
+          eq(schedules.tenant_id, tenantId),
+          isNull(schedules.deleted_at),
+          gte(schedules.start_at, weekStart),
+          lte(schedules.start_at, weekEnd),
+          staffFilter
         )
-        .orderBy(schedules.start_at),
-      db
-        .select({
-          id: patients.id,
-          name_kanji: patients.name_kanji,
-          rehab_start_date: patients.rehab_start_date,
-          onset_date: patients.onset_date,
-          disease_category: patients.disease_category,
-        })
-        .from(patients)
-        .where(and(eq(patients.tenant_id, tenantId), isNull(patients.deleted_at))),
-    ]);
+      ),
+    db
+      .select({ value: count() })
+      .from(patients)
+      .where(
+        and(eq(patients.tenant_id, tenantId), isNull(patients.deleted_at), patientStaffFilter)
+      ),
+    db
+      .select({
+        id: schedules.id,
+        start_at: schedules.start_at,
+        end_at: schedules.end_at,
+        units: schedules.units,
+        patient_name: patients.name_kanji,
+        therapist_name: staffs.name,
+        therapist_occupation: staffs.occupation,
+        session_status: sessions.status,
+      })
+      .from(schedules)
+      .leftJoin(patients, eq(schedules.patient_id, patients.id))
+      .leftJoin(staffs, eq(schedules.therapist_id, staffs.id))
+      .leftJoin(sessions, and(eq(sessions.schedule_id, schedules.id), isNull(sessions.deleted_at)))
+      .where(
+        and(
+          eq(schedules.tenant_id, tenantId),
+          isNull(schedules.deleted_at),
+          gte(schedules.start_at, dayStart),
+          lte(schedules.start_at, dayEnd),
+          staffFilter
+        )
+      )
+      .orderBy(schedules.start_at),
+    db
+      .select({
+        id: patients.id,
+        name_kanji: patients.name_kanji,
+        rehab_start_date: patients.rehab_start_date,
+        onset_date: patients.onset_date,
+        disease_category: patients.disease_category,
+      })
+      .from(patients)
+      .where(and(eq(patients.tenant_id, tenantId), isNull(patients.deleted_at))),
+    // 本日のスケジュール×セッションステータス（自分のみ）
+    db
+      .select({ status: sessions.status })
+      .from(schedules)
+      .leftJoin(sessions, and(eq(sessions.schedule_id, schedules.id), isNull(sessions.deleted_at)))
+      .where(
+        and(
+          eq(schedules.tenant_id, tenantId),
+          isNull(schedules.deleted_at),
+          gte(schedules.start_at, dayStart),
+          lte(schedules.start_at, dayEnd),
+          staffFilter
+        )
+      ),
+  ]);
 
   const alerts: AlertRow[] = [];
 
@@ -192,6 +216,14 @@ export async function getDashboardData(tenantId: string): Promise<{
   // 重複を除いたアラート数（患者単位）
   const alertPatientIds = new Set(alerts.map((a) => a.patient_id));
 
+  const statusCounts: StatusCounts = { scheduled: 0, draft: 0, completed: 0 };
+  for (const row of weekSessionRows) {
+    const s = row.status ?? "scheduled";
+    if (s === "draft") statusCounts.draft++;
+    else if (s === "completed") statusCounts.completed++;
+    else statusCounts.scheduled++;
+  }
+
   return {
     stats: {
       todayCount: todayCountRow?.value ?? 0,
@@ -199,6 +231,7 @@ export async function getDashboardData(tenantId: string): Promise<{
       activePatients: patientCountRow?.value ?? 0,
       alertCount: alertPatientIds.size,
     },
+    statusCounts,
     todaySchedules: todaySchedules.map((s) => ({
       ...s,
       patient_name: s.patient_name ?? "",
