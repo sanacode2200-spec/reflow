@@ -31,7 +31,7 @@ export type ScheduleWithRelations = {
   recurrence_group_id: string | null;
   patient_name: string;
   therapist_name: string;
-  therapist_color: string;
+  therapist_icon: string;
   session_status: "scheduled" | "draft" | "completed" | null;
   session_id: string | null;
 };
@@ -60,7 +60,7 @@ export async function getSchedules(
       recurrence_group_id: schedules.recurrence_group_id,
       patient_name: patients.name_kanji,
       therapist_name: staffs.name,
-      therapist_color: staffs.color,
+      therapist_icon: staffs.icon,
       session_status: sessions.status,
       session_id: sessions.id,
     })
@@ -193,6 +193,8 @@ export async function createSchedule(tenantId: string, input: unknown) {
   }
 
   for (const occ of occurrences) {
+    const dateLabel = occ.start.toLocaleDateString("ja", { month: "long", day: "numeric" });
+
     // 時間重複チェック（同一療法士）
     const overlaps = await db
       .select({ id: schedules.id })
@@ -207,8 +209,24 @@ export async function createSchedule(tenantId: string, input: unknown) {
         )
       );
     if (overlaps.length > 0) {
-      const d = occ.start.toLocaleDateString("ja", { month: "long", day: "numeric" });
-      throw new Error(`${d} は同じ療法士の予約と時間が重複しています`);
+      throw new Error(`${dateLabel} は同じ療法士の予約と時間が重複しています`);
+    }
+
+    // 時間重複チェック（同一患者）
+    const patientOverlaps = await db
+      .select({ id: schedules.id })
+      .from(schedules)
+      .where(
+        and(
+          eq(schedules.tenant_id, tenantId),
+          eq(schedules.patient_id, parsed.patient_id),
+          isNull(schedules.deleted_at),
+          lt(schedules.start_at, occ.end),
+          gt(schedules.end_at, occ.start)
+        )
+      );
+    if (patientOverlaps.length > 0) {
+      throw new Error(`${dateLabel} はこの患者に既に予約があります`);
     }
 
     const dayStart = startOfDay(occ.start);
@@ -321,6 +339,29 @@ async function checkOverlap(
   return rows.length > 0;
 }
 
+async function checkPatientOverlap(
+  tenantId: string,
+  patientId: string,
+  excludeId: string,
+  startAt: Date,
+  endAt: Date
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: schedules.id })
+    .from(schedules)
+    .where(
+      and(
+        eq(schedules.tenant_id, tenantId),
+        eq(schedules.patient_id, patientId),
+        ne(schedules.id, excludeId),
+        isNull(schedules.deleted_at),
+        lt(schedules.start_at, endAt),
+        gt(schedules.end_at, startAt)
+      )
+    );
+  return rows.length > 0;
+}
+
 export async function moveSchedule(
   scheduleId: string,
   tenantId: string,
@@ -337,6 +378,15 @@ export async function moveSchedule(
 
   if (await checkOverlap(tenantId, therapistId, scheduleId, startAt, endAt))
     throw new Error("移動先の時間帯に別の予約があります");
+
+  const moving = await db.query.schedules.findFirst({
+    where: (s, { eq }) => eq(s.id, scheduleId),
+  });
+  if (
+    moving &&
+    (await checkPatientOverlap(tenantId, moving.patient_id, scheduleId, startAt, endAt))
+  )
+    throw new Error("移動先の時間帯にこの患者の別の予約があります");
 
   const result = await db
     .update(schedules)
@@ -365,7 +415,10 @@ export async function updateSchedule(
   if (!user) throw new Error("Unauthorized");
 
   if (await checkOverlap(tenantId, input.therapistId, scheduleId, input.startAt, input.endAt))
-    throw new Error("その時間帯に別の予約があります");
+    throw new Error("その時間帯に別の予約があります（療法士）");
+
+  if (await checkPatientOverlap(tenantId, input.patientId, scheduleId, input.startAt, input.endAt))
+    throw new Error("その時間帯にこの患者の別の予約があります");
 
   const result = await db
     .update(schedules)

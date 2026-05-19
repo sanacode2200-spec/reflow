@@ -8,13 +8,20 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { STAFF_ICON_KEYS } from "@/lib/constants/staff-icons";
+import type { StaffIconKey } from "@/lib/constants/staff-icons";
+export type { StaffIconKey } from "@/lib/constants/staff-icons";
+
 const staffCodeSchema = z.string().regex(/^\d{4}$/, "スタッフIDは数字4桁で入力してください");
+
+const iconSchema = z.enum(STAFF_ICON_KEYS);
 
 const createStaffSchema = z.object({
   name: z.string().min(1),
   name_kana: z.string().min(1),
   role: z.enum(["admin", "therapist"]),
   occupation: z.enum(["pt", "ot", "st"]),
+  icon: iconSchema.default("star"),
   staff_code: staffCodeSchema,
   password: z.string().min(4, "パスワードは4文字以上で入力してください"),
   max_units_per_day: z.number().int().min(1).default(18),
@@ -26,6 +33,7 @@ const updateStaffSchema = z.object({
   name_kana: z.string().min(1),
   role: z.enum(["admin", "therapist"]),
   occupation: z.enum(["pt", "ot", "st"]),
+  icon: iconSchema,
   max_units_per_day: z.number().int().min(1),
   max_units_per_week: z.number().int().min(1),
 });
@@ -70,7 +78,7 @@ export type StaffRow = {
   name_kana: string;
   role: "admin" | "therapist";
   occupation: "pt" | "ot" | "st";
-  color: string;
+  icon: StaffIconKey;
   staff_code: string | null;
   email: string | null;
   max_units_per_day: number;
@@ -96,7 +104,7 @@ export async function getStaffList(tenantId: string): Promise<StaffRow[]> {
     name_kana: r.name_kana,
     role: r.role,
     occupation: r.occupation,
-    color: r.color,
+    icon: (r.icon ?? "star") as StaffIconKey,
     staff_code: r.staff_code ?? null,
     email: r.email ?? null,
     max_units_per_day: r.max_units_per_day,
@@ -133,6 +141,7 @@ export async function createStaff(tenantId: string, input: unknown) {
       name_kana: data.name_kana,
       role: data.role,
       occupation: data.occupation,
+      icon: data.icon,
       staff_code: data.staff_code,
       email,
       max_units_per_day: data.max_units_per_day,
@@ -176,6 +185,7 @@ export async function updateStaff(tenantId: string, staffId: string, input: unkn
       name_kana: data.name_kana,
       role: data.role,
       occupation: data.occupation,
+      icon: data.icon,
       max_units_per_day: data.max_units_per_day,
       max_units_per_week: data.max_units_per_week,
       updated_at: new Date(),

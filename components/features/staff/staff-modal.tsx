@@ -7,6 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createStaff, updateStaff } from "@/lib/actions/staff";
 import type { StaffRow } from "@/lib/actions/staff";
+import { STAFF_ICON_KEYS } from "@/lib/constants/staff-icons";
+import type { StaffIconKey } from "@/lib/constants/staff-icons";
 import {
   Dialog,
   DialogContent,
@@ -17,12 +19,30 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Star, Heart, Zap, Sun, Leaf, Flame, Shield, Gem, Moon, Cloud } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+export const STAFF_ICON_MAP: Record<StaffIconKey, LucideIcon> = {
+  star: Star,
+  heart: Heart,
+  zap: Zap,
+  sun: Sun,
+  leaf: Leaf,
+  flame: Flame,
+  shield: Shield,
+  gem: Gem,
+  moon: Moon,
+  cloud: Cloud,
+};
+
+const iconSchema = z.enum(STAFF_ICON_KEYS);
 
 const createSchema = z.object({
   name: z.string().min(1, "氏名を入力してください"),
   name_kana: z.string().min(1, "カナを入力してください"),
   role: z.enum(["admin", "therapist"]),
   occupation: z.enum(["pt", "ot", "st"]),
+  icon: iconSchema,
   staff_code: z.string().regex(/^\d{4}$/, "数字4桁で入力してください"),
   password: z.string().min(4, "4文字以上で入力してください"),
   max_units_per_day: z.number().int().min(1),
@@ -34,6 +54,7 @@ const editSchema = z.object({
   name_kana: z.string().min(1, "カナを入力してください"),
   role: z.enum(["admin", "therapist"]),
   occupation: z.enum(["pt", "ot", "st"]),
+  icon: iconSchema,
   max_units_per_day: z.number().int().min(1),
   max_units_per_week: z.number().int().min(1),
 });
@@ -71,6 +92,7 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
       name_kana: "",
       role: "therapist",
       occupation: "pt",
+      icon: "star",
       staff_code: "",
       password: "",
       max_units_per_day: 18,
@@ -85,6 +107,7 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
       name_kana: staff?.name_kana ?? "",
       role: staff?.role ?? "therapist",
       occupation: staff?.occupation ?? "pt",
+      icon: (staff?.icon ?? "star") as StaffIconKey,
       max_units_per_day: staff?.max_units_per_day ?? 18,
       max_units_per_week: staff?.max_units_per_week ?? 108,
     },
@@ -97,6 +120,7 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
         name_kana: staff.name_kana,
         role: staff.role,
         occupation: staff.occupation,
+        icon: staff.icon,
         max_units_per_day: staff.max_units_per_day,
         max_units_per_week: staff.max_units_per_week,
       });
@@ -180,6 +204,41 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
   );
 }
 
+function IconPicker({
+  value,
+  onChange,
+}: {
+  value: StaffIconKey;
+  onChange: (key: StaffIconKey) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>アイコン</Label>
+      <div className="flex flex-wrap gap-2">
+        {STAFF_ICON_KEYS.map((key) => {
+          const Icon = STAFF_ICON_MAP[key];
+          const selected = value === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onChange(key)}
+              className={`flex h-9 w-9 items-center justify-center rounded-lg border-2 transition-all ${
+                selected
+                  ? "border-[#111] bg-[#111] text-white"
+                  : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111] hover:text-[#111]"
+              }`}
+              title={key}
+            >
+              <Icon size={16} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function FormFields({
   form,
   isEdit,
@@ -188,6 +247,7 @@ function FormFields({
   isEdit: boolean;
 }) {
   const f = form as ReturnType<typeof useForm<CreateForm>>;
+  const iconValue = (f.watch("icon") ?? "star") as StaffIconKey;
 
   return (
     <>
@@ -234,6 +294,8 @@ function FormFields({
           </select>
         </div>
       </div>
+
+      <IconPicker value={iconValue} onChange={(key) => f.setValue("icon", key)} />
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">

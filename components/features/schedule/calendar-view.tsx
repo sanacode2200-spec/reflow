@@ -12,6 +12,8 @@ import { ja } from "date-fns/locale";
 import { deleteSchedule, moveSchedule } from "@/lib/actions/schedule";
 import { calcUnitsFromMinutes } from "@/lib/rehab/calculator";
 import type { ScheduleWithRelations } from "@/lib/actions/schedule";
+import { STAFF_ICON_MAP } from "@/components/features/staff/staff-modal";
+import type { StaffIconKey } from "@/lib/constants/staff-icons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -162,9 +164,11 @@ export default function CalendarView({
 
   const renderEventContent = (arg: EventContentArg) => {
     const schedule = arg.event.extendedProps["schedule"] as ScheduleWithRelations | undefined;
+    const iconKey = (schedule?.therapist_icon ?? "star") as StaffIconKey;
+    const Icon = STAFF_ICON_MAP[iconKey] ?? STAFF_ICON_MAP["star"];
     return (
       <div
-        className="h-full w-full cursor-pointer overflow-hidden px-1.5"
+        className="relative h-full w-full cursor-pointer overflow-hidden px-1.5 pt-0.5"
         onContextMenu={(e) => schedule && handleContextMenu(e, schedule)}
         onMouseEnter={(e) => {
           if (!schedule) return;
@@ -174,6 +178,11 @@ export default function CalendarView({
         onMouseLeave={() => setTooltip(null)}
       >
         <span className="block truncate text-xs leading-tight">{arg.event.title}</span>
+        <Icon
+          size={9}
+          className="absolute top-1 right-1 opacity-50"
+          style={{ color: arg.event.textColor }}
+        />
       </div>
     );
   };
