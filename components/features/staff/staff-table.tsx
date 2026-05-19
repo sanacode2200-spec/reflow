@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
@@ -37,6 +38,7 @@ type Props = {
 };
 
 export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }: Props) {
+  const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<StaffRow | null>(null);
@@ -49,6 +51,7 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
     setArchiving(true);
     try {
       await archiveStaff(tenantId, archiveTarget.id);
+      router.refresh();
     } finally {
       setArchiving(false);
       setArchiveTarget(null);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -59,6 +60,7 @@ const roleOptions = [
 ] as const;
 
 export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
+  const router = useRouter();
   const isEdit = !!staff;
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -102,6 +104,7 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
       await createStaff(tenantId, data);
       createForm.reset();
       onClose();
+      router.refresh();
     } catch (e) {
       setServerError(e instanceof Error ? e.message : "エラーが発生しました");
     }
@@ -113,6 +116,7 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
     try {
       await updateStaff(tenantId, staff.id, data);
       onClose();
+      router.refresh();
     } catch (e) {
       setServerError(e instanceof Error ? e.message : "エラーが発生しました");
     }
