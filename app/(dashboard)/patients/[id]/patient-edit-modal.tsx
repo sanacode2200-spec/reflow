@@ -47,6 +47,23 @@ const schema = z.object({
 type Form = z.infer<typeof schema>;
 type Staff = { id: string; name: string; occupation: string };
 const OCCUPATION: Record<string, string> = { pt: "PT", ot: "OT", st: "ST" };
+const DISEASE_OPTIONS = [
+  { value: "cerebrovascular", label: "脳血管疾患等" },
+  { value: "musculoskeletal", label: "運動器" },
+  { value: "disuse_syndrome", label: "廃用症候群" },
+  { value: "cardiovascular", label: "心大血管" },
+  { value: "respiratory", label: "呼吸器" },
+];
+const INSURANCE_OPTIONS = [
+  { value: "medical", label: "医療保険" },
+  { value: "workers_comp", label: "労災保険" },
+  { value: "auto_liability", label: "自賠責保険" },
+];
+const ONSET_TYPE_OPTIONS = [
+  { value: "onset", label: "発症日" },
+  { value: "surgery", label: "手術日" },
+  { value: "acute_exacerbation", label: "急性増悪日" },
+];
 
 export default function PatientEditModal({
   patient,
@@ -158,9 +175,48 @@ export default function PatientEditModal({
                 })}
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>性別</Label>
+                <select
+                  {...form.register("gender")}
+                  className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+                >
+                  <option value="male">男性</option>
+                  <option value="female">女性</option>
+                  <option value="other">その他</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>保険種別</Label>
+                <select
+                  {...form.register("insurance_type")}
+                  className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+                >
+                  {INSURANCE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <div className="space-y-1.5">
               <Label>主病名</Label>
               <Input {...form.register("main_diagnosis")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>疾患別区分</Label>
+              <select
+                {...form.register("disease_category")}
+                className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+              >
+                {DISEASE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -168,9 +224,22 @@ export default function PatientEditModal({
                 <Input {...form.register("rehab_start_date")} type="date" />
               </div>
               <div className="space-y-1.5">
-                <Label>起算日</Label>
-                <Input {...form.register("onset_date")} type="date" />
+                <Label>起算日の種別</Label>
+                <select
+                  {...form.register("onset_type")}
+                  className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+                >
+                  {ONSET_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>起算日</Label>
+              <Input {...form.register("onset_date")} type="date" />
             </div>
             {alert && (alert.initial || alert.early) && (
               <div className="space-y-1">

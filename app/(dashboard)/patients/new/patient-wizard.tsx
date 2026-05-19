@@ -45,7 +45,7 @@ type Props = { tenantId: string; staffs: Staff[] };
 const stepTitles = ["基本情報", "保険・診療", "リハビリ情報", "確認"];
 const stepFields: (keyof Form)[][] = [
   ["patient_code", "name_kanji", "name_kana", "birth_date", "gender", "patient_type"],
-  ["insurance_type", "main_diagnosis"],
+  ["insurance_type", "main_diagnosis", "disease_category"],
   ["rehab_start_date", "onset_date", "onset_type", "therapist_id"],
   [],
 ];
@@ -216,7 +216,7 @@ function FieldError({ msg }: { msg?: string }) {
 }
 
 function SelectField({
-  label,
+  label: _label,
   ...props
 }: { label: string } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
@@ -320,18 +320,21 @@ function Step2({ form }: { form: UseFormReturn<Form> }) {
         <Input {...form.register("main_diagnosis")} placeholder="例: 右大腿骨頸部骨折" />
         <FieldError msg={form.formState.errors.main_diagnosis?.message} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label>疾患別区分</Label>
-          <div className="rounded-md border border-[#eaeaea] bg-[#fafafa] px-3 py-2 text-sm text-[#888]">
-            {DISEASE_LABEL[form.watch("disease_category")]}（Phase1固定）
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>施設基準区分</Label>
-          <div className="rounded-md border border-[#eaeaea] bg-[#fafafa] px-3 py-2 text-sm text-[#888]">
-            運動器リハ（II）（Phase1固定）
-          </div>
+      <div className="space-y-1.5">
+        <Label>疾患別区分</Label>
+        <SelectField label="疾患別区分" {...form.register("disease_category")}>
+          {Object.entries(DISEASE_LABEL).map(([v, l]) => (
+            <option key={v} value={v}>
+              {l}
+            </option>
+          ))}
+        </SelectField>
+        <FieldError msg={form.formState.errors.disease_category?.message} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>施設基準区分</Label>
+        <div className="rounded-md border border-[#eaeaea] bg-[#fafafa] px-3 py-2 text-sm text-[#888]">
+          運動器リハビリテーション料（II）（Phase1固定）
         </div>
       </div>
     </div>

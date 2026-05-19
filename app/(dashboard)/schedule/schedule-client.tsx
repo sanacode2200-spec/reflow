@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import dynamic from "next/dynamic";
 import TherapistFilter from "@/components/features/schedule/therapist-filter";
 import SchedulePanel from "@/components/features/schedule/schedule-panel";
+import ScheduleCreatePanel from "@/components/features/schedule/schedule-create-panel";
 import type { ScheduleWithRelations } from "@/lib/actions/schedule";
 
 const CalendarView = dynamic(() => import("@/components/features/schedule/calendar-view"), {
@@ -28,7 +29,8 @@ export default function ScheduleClient({
   const defaultSelected = currentStaffId ? [currentStaffId] : staffs.map((s) => s.id);
   const [selectedTherapistIds, setSelectedTherapistIds] = useState<string[]>(defaultSelected);
   const [openPanelId, setOpenPanelId] = useState<string | null>(null);
-  const [schedules, setSchedules] = useState(initialSchedules);
+  const [createSlot, setCreateSlot] = useState<{ start: Date; end: Date } | null>(null);
+  const [schedules] = useState(initialSchedules);
 
   const filteredSchedules = schedules.filter((s) => selectedTherapistIds.includes(s.therapist_id));
 
@@ -47,6 +49,11 @@ export default function ScheduleClient({
     window.location.reload();
   }, []);
 
+  const handleSelect = useCallback((start: Date, end: Date) => {
+    setOpenPanelId(null);
+    setCreateSlot({ start, end });
+  }, []);
+
   return (
     <div>
       <TherapistFilter
@@ -60,7 +67,11 @@ export default function ScheduleClient({
         <CalendarView
           schedules={filteredSchedules}
           tenantId={tenantId}
-          onEventClick={setOpenPanelId}
+          onEventClick={(id) => {
+            setCreateSlot(null);
+            setOpenPanelId(id);
+          }}
+          onSelect={handleSelect}
           onRefresh={handleRefresh}
         />
       </div>
@@ -73,6 +84,16 @@ export default function ScheduleClient({
         scheduleId={openPanelId}
         schedules={schedules}
         onClose={() => setOpenPanelId(null)}
+      />
+
+      <ScheduleCreatePanel
+        tenantId={tenantId}
+        staffs={staffs}
+        defaultTherapistId={currentStaffId}
+        defaultStart={createSlot?.start ?? null}
+        defaultEnd={createSlot?.end ?? null}
+        onClose={() => setCreateSlot(null)}
+        onCreated={handleRefresh}
       />
     </div>
   );

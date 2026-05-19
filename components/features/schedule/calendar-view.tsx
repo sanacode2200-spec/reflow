@@ -5,15 +5,10 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import type {
-  EventClickArg,
-  EventDropArg,
-  DateSelectArg,
-  EventContentArg,
-} from "@fullcalendar/core";
+import type { EventClickArg, EventDropArg, EventContentArg } from "@fullcalendar/core";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import { deleteSchedule } from "@/lib/actions/schedule";
+import { deleteSchedule, moveSchedule } from "@/lib/actions/schedule";
 import type { ScheduleWithRelations } from "@/lib/actions/schedule";
 import {
   AlertDialog,
@@ -30,6 +25,7 @@ type Props = {
   schedules: ScheduleWithRelations[];
   tenantId: string;
   onEventClick: (scheduleId: string) => void;
+  onSelect: (start: Date, end: Date) => void;
   onRefresh: () => void;
 };
 
@@ -52,7 +48,13 @@ const statusColors: Record<string, { border: string; bg: string; text: string; d
     completed: { border: "#0070f3", bg: "#f0f7ff", text: "#0070f3" },
   };
 
-export default function CalendarView({ schedules, tenantId, onEventClick, onRefresh }: Props) {
+export default function CalendarView({
+  schedules,
+  tenantId,
+  onEventClick,
+  onSelect,
+  onRefresh,
+}: Props) {
   const calendarRef = useRef<FullCalendar>(null);
   const [slotDuration, setSlotDuration] = useState<SlotDuration>("00:20:00");
   const [contextMenu, setContextMenu] = useState<ContextMenu>(null);
@@ -126,6 +128,7 @@ export default function CalendarView({ schedules, tenantId, onEventClick, onRefr
         className="h-full w-full cursor-pointer truncate overflow-hidden px-1 text-xs leading-tight"
         onContextMenu={(e) => handleContextMenu(e, schedule)}
         onMouseEnter={(e) => {
+          if (!schedule) return;
           const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
           setTooltip({ x: rect.left, y: rect.bottom + 4, schedule });
         }}
@@ -180,9 +183,15 @@ export default function CalendarView({ schedules, tenantId, onEventClick, onRefr
           right: "timeGridWeek,timeGridDay",
         }}
         slotMinTime="08:00:00"
-        slotMaxTime="21:00:00"
+        slotMaxTime="18:00:00"
+        slotLabelFormat={{
+          hour: "numeric",
+          minute: "2-digit",
+          omitZeroMinute: false,
+          hour12: false,
+        }}
         slotDuration={slotDuration}
-        businessHours={{ daysOfWeek: [1, 2, 3, 4, 5, 6], startTime: "08:00", endTime: "19:00" }}
+        businessHours={{ daysOfWeek: [1, 2, 3, 4, 5, 6], startTime: "08:00", endTime: "18:00" }}
         hiddenDays={[0]}
         nowIndicator
         editable
@@ -192,10 +201,28 @@ export default function CalendarView({ schedules, tenantId, onEventClick, onRefr
         events={events}
         eventContent={renderEventContent}
         eventClick={handleEventClick}
+        select={(arg) => {
+          onSelect(arg.start, arg.end);
+          calendarRef.current?.getApi().unselect();
+        }}
         eventDrop={(arg: EventDropArg) => {
           if (arg.jsEvent.ctrlKey || arg.jsEvent.altKey || arg.jsEvent.metaKey) {
             arg.revert();
+            return;
           }
+          if (!arg.event.start || !arg.event.end) {
+            arg.revert();
+            return;
+          }
+          const schedule = arg.event.extendedProps["schedule"] as ScheduleWithRelations;
+          const canMove = !schedule.session_status || schedule.session_status === "scheduled";
+          if (!canMove) {
+            arg.revert();
+            return;
+          }
+          moveSchedule(schedule.id, tenantId, arg.event.start, arg.event.end)
+            .then(() => onRefresh())
+            .catch(() => arg.revert());
         }}
         height="auto"
       />
@@ -238,7 +265,7 @@ export default function CalendarView({ schedules, tenantId, onEventClick, onRefr
       )}
 
       {/* Tooltip */}
-      {tooltip && (
+      {tooltip && tooltip.schedule && (
         <div
           className="pointer-events-none fixed z-[70] rounded-lg border border-[#eaeaea] bg-white px-3 py-2 text-xs shadow-md"
           style={{ left: tooltip.x, top: tooltip.y }}
