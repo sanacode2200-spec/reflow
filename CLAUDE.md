@@ -30,16 +30,16 @@ cat <対象ファイルのパス>
 
 ## ⛔ 絶対ルール（違反したら事故）
 
-| ルール | 理由 |
-|--------|------|
-| `any` 型禁止。`unknown` + Zod で絞る | 型安全の崩壊 |
-| `console.log` 禁止（`console.error` / `console.warn` のみ） | 個人情報ログ漏洩 |
-| `tenant_id` を含まないクエリを書かない | マルチテナント漏洩 |
-| `max_units_per_day` / `max_units_per_week` をハードコードしない | 必ず `staffs` テーブルから取得 |
-| 計画書・実施記録は論理削除のみ（本番環境） | 診療録保存義務5年 |
-| 本番DBを直接編集・削除しない | すべてマイグレーション経由 |
-| `service_role` キーをクライアントに露出させない | `.env.local` のみ。`NEXT_PUBLIC_` 禁止 |
-| 不明点は推測しない | 選択肢を提示してユーザーに確認する |
+| ルール                                                          | 理由                                   |
+| --------------------------------------------------------------- | -------------------------------------- |
+| `any` 型禁止。`unknown` + Zod で絞る                            | 型安全の崩壊                           |
+| `console.log` 禁止（`console.error` / `console.warn` のみ）     | 個人情報ログ漏洩                       |
+| `tenant_id` を含まないクエリを書かない                          | マルチテナント漏洩                     |
+| `max_units_per_day` / `max_units_per_week` をハードコードしない | 必ず `staffs` テーブルから取得         |
+| 計画書・実施記録は論理削除のみ（本番環境）                      | 診療録保存義務5年                      |
+| 本番DBを直接編集・削除しない                                    | すべてマイグレーション経由             |
+| `service_role` キーをクライアントに露出させない                 | `.env.local` のみ。`NEXT_PUBLIC_` 禁止 |
+| 不明点は推測しない                                              | 選択肢を提示してユーザーに確認する     |
 
 ---
 
@@ -56,6 +56,7 @@ Step 5: スタッフ管理（/settings/staffs）
 ### 各 Step の開始プロンプト例
 
 **Step 1（環境構築）：**
+
 ```
 CLAUDE.md と .claude/rules/ を読んで環境構築してください。
 - Next.js 15 App Router + TypeScript strict + Tailwind CSS v4 + shadcn/ui
@@ -66,6 +67,7 @@ CLAUDE.md と .claude/rules/ を読んで環境構築してください。
 ```
 
 **Step 2（患者管理）：**
+
 ```
 CLAUDE.md と .claude/rules/ を読んで患者管理を実装してください。
 - /patients 一覧（TanStack Table・検索・ステータスフィルタ）
@@ -76,6 +78,7 @@ CLAUDE.md と .claude/rules/ を読んで患者管理を実装してください
 ```
 
 **Step 3（スケジュール）：**
+
 ```
 CLAUDE.md と .claude/rules/ を読んでスケジュールを実装してください。
 - FullCalendar 無料版（Interactionプラグイン）タイムグリッドビュー（週次/日次）
@@ -87,6 +90,7 @@ CLAUDE.md と .claude/rules/ を読んでスケジュールを実装してくだ
 ```
 
 **Step 4（実施記録）：**
+
 ```
 CLAUDE.md と .claude/rules/ を読んで実施記録を実装してください。
 - 3ステータス（scheduled / draft / completed）
@@ -97,6 +101,7 @@ CLAUDE.md と .claude/rules/ を読んで実施記録を実装してください
 ```
 
 **Step 5（スタッフ管理）：**
+
 ```
 CLAUDE.md と .claude/rules/ を読んでスタッフ管理を実装してください。
 - /settings/staffs でスタッフ登録・編集・アーカイブ/復帰
@@ -163,25 +168,31 @@ reflow/
 
 ### Server Actions vs Route Handlers
 
-| 用途 | 方法 |
-|------|------|
-| データ取得 | RSC から直接 Drizzle 呼び出し |
-| 作成・更新・削除 | Server Actions（CSRF自動防御） |
-| Webhook・外部公開API | Route Handlers |
+| 用途                 | 方法                           |
+| -------------------- | ------------------------------ |
+| データ取得           | RSC から直接 Drizzle 呼び出し  |
+| 作成・更新・削除     | Server Actions（CSRF自動防御） |
+| Webhook・外部公開API | Route Handlers                 |
 
 ### 削除ポリシー
 
-| 環境 | 方法 |
-|------|------|
-| 本番 | 論理削除のみ（`deleted_at` をセット） |
-| ローカル開発 | 物理削除OK（テストデータのみ） |
+| 環境         | 方法                                  |
+| ------------ | ------------------------------------- |
+| 本番         | 論理削除のみ（`deleted_at` をセット） |
+| ローカル開発 | 物理削除OK（テストデータのみ）        |
+
+---
+
+## 🚫 YAGNI（やらないこと・後回し方針）
+
+- カレンダーのリソースビュー（療法士列表示）は `reflow-calendar` リポジトリで自前実装中。完成後に `components/features/schedule/` に移植予定。FullCalendarのSchedulerプラグインは買わない方針。
 
 ---
 
 ## 📖 詳細仕様（参照先）
 
-| 内容 | ファイル |
-|------|----------|
-| DBスキーマ・Drizzle規約・RLS | `.claude/rules/db-conventions.md` |
-| リハビリ業務ドメイン知識・算定ルール | `.claude/rules/rehab-domain.md` |
-| UIデザイン・カラー・レスポンシブ | `.claude/rules/ui-conventions.md` |
+| 内容                                 | ファイル                          |
+| ------------------------------------ | --------------------------------- |
+| DBスキーマ・Drizzle規約・RLS         | `.claude/rules/db-conventions.md` |
+| リハビリ業務ドメイン知識・算定ルール | `.claude/rules/rehab-domain.md`   |
+| UIデザイン・カラー・レスポンシブ     | `.claude/rules/ui-conventions.md` |
