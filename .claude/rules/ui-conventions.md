@@ -69,14 +69,19 @@ colors: {
 - **スナップ単位**：`snapDuration: '00:05:00'`（固定）。ドラッグ・リサイズは5分単位
 - **5分刻み時の行高さ**：`.fc-timegrid-slot` の height を通常の半分に縮小（20分・10分刻みは現状維持）
 - **予約枠テキスト**：枠内は「開始時刻（HH:mm）＋患者名」のみ（1行・truncate）
-- **本日列**：`.fc-day-today { background: #f0f7ff }` （薄ブルー）
+- **予約枠アイコン**：担当スタッフの `icon` を右上に 9px で薄く表示（`staffs.icon` → `STAFF_ICON_MAP` → lucide アイコン）
+- **本日列**：過去時刻 `#ebebeb`（グレー）→ 未来時刻 `#f0f7ff`（薄ブルー）のグラデーション。CSS変数 `--today-past-pct` を1分ごと更新して位置を動かす
+- **現在時刻インジケーター**：`border-color: #0070f3`・`border-width: 2px`
 - **リサイズ**：`eventResize` で終了時刻・単位数を自動更新（`scheduled` のみ可）
 - **単位数計算**：`calcUnitsFromMinutes(diffMin)` → `lib/rehab/calculator.ts`
 
 ### スタッフフィルター
 
-- ログイン中スタッフは常に一番左・常時選択（解除不可）
-- `therapist-filter.tsx` でログインスタッフを先頭にソート
+- **単一選択**（ラジオ式）：「全員」ボタン + 各スタッフボタン。複数同時選択は不可
+- 初期表示：ログインユーザーのスタッフボタンが選択された状態（`currentStaffId ?? "all"`）
+- ログインユーザーは常に先頭にソート（`therapist-filter.tsx`）
+- **全員選択時**：ログインユーザーのイベント = ステータス色、他スタッフ = グレー階調（`orderedStaffIds` の順番で暗くなる）
+- **個別スタッフ選択時**：選択中スタッフのイベント = ステータス色。予約作成パネルのデフォルト担当者も選択中スタッフになる
 
 ### 右クリックメニュー
 

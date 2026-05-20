@@ -49,10 +49,8 @@ export default function ScheduleClient({
       ? initialSchedules
       : initialSchedules.filter((s) => s.therapist_id === selectedStaffId);
 
-  // 表示中のスタッフが「自分」かどうかに関わらず、選択中スタッフのイベントを主役の色で表示する
   const activeStaffId = selectedStaffId === "all" ? currentStaffId : selectedStaffId;
 
-  // 全員表示時のグレー順序（ログインユーザーが先頭）
   const orderedStaffIds =
     selectedStaffId === "all"
       ? [
@@ -80,13 +78,11 @@ export default function ScheduleClient({
     });
   }, []);
 
-  // 予約作成時のデフォルト担当者: 選択中スタッフ → ログインユーザー
+  const selectedOrCurrent = selectedStaffId !== "all" ? selectedStaffId : currentStaffId;
   const defaultCreateTherapistId =
     panelIntent?.mode === "create"
-      ? (panelIntent.therapistId ?? (selectedStaffId !== "all" ? selectedStaffId : currentStaffId))
-      : selectedStaffId !== "all"
-        ? selectedStaffId
-        : currentStaffId;
+      ? (panelIntent.therapistId ?? selectedOrCurrent)
+      : selectedOrCurrent;
 
   return (
     <div>

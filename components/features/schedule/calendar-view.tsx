@@ -12,7 +12,7 @@ import { ja } from "date-fns/locale";
 import { deleteSchedule, moveSchedule } from "@/lib/actions/schedule";
 import { calcUnitsFromMinutes } from "@/lib/rehab/calculator";
 import type { ScheduleWithRelations } from "@/lib/actions/schedule";
-import { STAFF_ICON_MAP } from "@/components/features/staff/staff-modal";
+import { STAFF_ICON_MAP } from "@/lib/constants/staff-icons";
 import type { StaffIconKey } from "@/lib/constants/staff-icons";
 import {
   AlertDialog,
@@ -49,7 +49,12 @@ type DeleteTarget = {
   schedule: ScheduleWithRelations;
 } | null;
 
-// ログイン者のステータス別背景色
+type Tooltip = {
+  x: number;
+  y: number;
+  schedule: ScheduleWithRelations;
+} | null;
+
 const myStatusBg: Record<string, { bg: string; text: string }> = {
   scheduled: { bg: "#ffffff", text: "#3f3f46" },
   draft: { bg: "#fff7ed", text: "#c2410c" },
@@ -81,15 +86,10 @@ export default function CalendarView({
   const [contextMenu, setContextMenu] = useState<ContextMenu>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [deleting, setDeleting] = useState(false);
-  const [tooltip, setTooltip] = useState<{
-    x: number;
-    y: number;
-    schedule: ScheduleWithRelations;
-  } | null>(null);
+  const [tooltip, setTooltip] = useState<Tooltip>(null);
 
   const slotMinHeight = slotDuration === "00:05:00" ? 12 : 24;
 
-  // 今日列の「過去時刻 = グレー、未来時刻 = 薄い青」グラデーション
   useEffect(() => {
     const SLOT_START = 8 * 60; // 08:00
     const SLOT_END = 18 * 60; // 18:00
@@ -108,7 +108,6 @@ export default function CalendarView({
     return () => clearInterval(id);
   }, []);
 
-  // 他スタッフのグレーマップ（選択順で色が決まる）
   const otherStaffGrayMap = useMemo(() => {
     const map: Record<string, { bg: string; text: string }> = {};
     let idx = 0;
@@ -207,8 +206,7 @@ export default function CalendarView({
   };
 
   const deleteTargetStatus = deleteTarget?.schedule.session_status ?? "scheduled";
-  const canDelete =
-    deleteTargetStatus === "scheduled" || deleteTarget?.schedule.session_status === null;
+  const canDelete = deleteTargetStatus === "scheduled";
 
   return (
     <div className="relative">

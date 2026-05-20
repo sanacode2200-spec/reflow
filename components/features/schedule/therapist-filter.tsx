@@ -11,6 +11,11 @@ type Props = {
 
 const occupationLabel: Record<string, string> = { pt: "PT", ot: "OT", st: "ST" };
 
+const pillState = (active: boolean) =>
+  active
+    ? "border-[#111] bg-[#111] text-white"
+    : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111] hover:text-[#111]";
+
 export default function TherapistFilter({ staffs, currentStaffId, selectedId, onChange }: Props) {
   const sorted = [...staffs].sort((a, b) => {
     if (a.id === currentStaffId) return -1;
@@ -22,11 +27,7 @@ export default function TherapistFilter({ staffs, currentStaffId, selectedId, on
     <div className="mb-4 flex flex-wrap gap-2">
       <button
         onClick={() => onChange("all")}
-        className={`rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
-          selectedId === "all"
-            ? "border-[#111] bg-[#111] text-white"
-            : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111] hover:text-[#111]"
-        }`}
+        className={`rounded-full border px-3 py-1 text-sm font-medium transition-colors ${pillState(selectedId === "all")}`}
       >
         全員
       </button>
@@ -37,11 +38,7 @@ export default function TherapistFilter({ staffs, currentStaffId, selectedId, on
           <button
             key={staff.id}
             onClick={() => onChange(staff.id)}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
-              isSelected
-                ? "border-[#111] bg-[#111] text-white"
-                : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111] hover:text-[#111]"
-            }`}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${pillState(isSelected)}`}
           >
             <span className="text-xs opacity-70">
               {occupationLabel[staff.occupation] ?? staff.occupation}

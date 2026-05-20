@@ -12,8 +12,9 @@ import {
 } from "@tanstack/react-table";
 import { archiveStaff } from "@/lib/actions/staff";
 import type { StaffRow } from "@/lib/actions/staff";
+import { STAFF_ICON_MAP } from "@/lib/constants/staff-icons";
 import type { StaffIconKey } from "@/lib/constants/staff-icons";
-import StaffModal, { STAFF_ICON_MAP } from "./staff-modal";
+import StaffModal from "./staff-modal";
 import ResetPasswordModal from "./reset-password-modal";
 import { Button } from "@/components/ui/button";
 import {

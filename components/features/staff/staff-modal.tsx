@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createStaff, updateStaff } from "@/lib/actions/staff";
 import type { StaffRow } from "@/lib/actions/staff";
-import { STAFF_ICON_KEYS } from "@/lib/constants/staff-icons";
+import { STAFF_ICON_KEYS, STAFF_ICON_MAP } from "@/lib/constants/staff-icons";
 import type { StaffIconKey } from "@/lib/constants/staff-icons";
 import {
   Dialog,
@@ -19,21 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Star, Heart, Zap, Sun, Leaf, Flame, Shield, Gem, Moon, Cloud } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
-export const STAFF_ICON_MAP: Record<StaffIconKey, LucideIcon> = {
-  star: Star,
-  heart: Heart,
-  zap: Zap,
-  sun: Sun,
-  leaf: Leaf,
-  flame: Flame,
-  shield: Shield,
-  gem: Gem,
-  moon: Moon,
-  cloud: Cloud,
-};
+export { STAFF_ICON_MAP };
 
 const iconSchema = z.enum(STAFF_ICON_KEYS);
 
