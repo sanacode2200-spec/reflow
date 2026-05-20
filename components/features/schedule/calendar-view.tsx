@@ -89,6 +89,25 @@ export default function CalendarView({
 
   const slotMinHeight = slotDuration === "00:05:00" ? 12 : 24;
 
+  // 今日列の「過去時刻 = グレー、未来時刻 = 薄い青」グラデーション
+  useEffect(() => {
+    const SLOT_START = 8 * 60; // 08:00
+    const SLOT_END = 18 * 60; // 18:00
+
+    const update = () => {
+      const now = new Date();
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+      const pct = Math.max(
+        0,
+        Math.min(100, ((currentMin - SLOT_START) / (SLOT_END - SLOT_START)) * 100)
+      );
+      document.documentElement.style.setProperty("--today-past-pct", `${pct}%`);
+    };
+    update();
+    const id = setInterval(update, 60000);
+    return () => clearInterval(id);
+  }, []);
+
   // 他スタッフのグレーマップ（選択順で色が決まる）
   const otherStaffGrayMap = useMemo(() => {
     const map: Record<string, { bg: string; text: string }> = {};
@@ -214,8 +233,15 @@ export default function CalendarView({
         .fc-timegrid-slot { height: ${slotMinHeight}px !important; }
         .fc-event { border: none !important; box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04); border-radius: 4px !important; }
         .fc-event:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06); }
-        .fc-day-today { background: #f0f7ff !important; }
-        .fc-timegrid-now-indicator-line { border-color: #0070f3 !important; }
+        .fc-day-today {
+          background: linear-gradient(
+            to bottom,
+            #ebebeb var(--today-past-pct, 0%),
+            #f0f7ff var(--today-past-pct, 0%)
+          ) !important;
+        }
+        .fc-timegrid-now-indicator-line { border-color: #0070f3 !important; border-width: 2px !important; }
+        .fc-timegrid-now-indicator-arrow { border-top-color: #0070f3 !important; border-bottom-color: #0070f3 !important; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #eaeaea; border-radius: 3px; }
       `}</style>

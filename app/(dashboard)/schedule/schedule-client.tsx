@@ -40,25 +40,26 @@ export default function ScheduleClient({
   tenantId,
 }: Props) {
   const router = useRouter();
-  const defaultSelected = currentStaffId ? [currentStaffId] : staffs.map((s) => s.id);
-  const [selectedTherapistIds, setSelectedTherapistIds] = useState<string[]>(defaultSelected);
+  const [selectedStaffId, setSelectedStaffId] = useState<string | "all">(currentStaffId ?? "all");
   const [openPanelId, setOpenPanelId] = useState<string | null>(null);
   const [panelIntent, setPanelIntent] = useState<PanelIntent>(null);
 
-  const filteredSchedules = initialSchedules.filter((s) =>
-    selectedTherapistIds.includes(s.therapist_id)
-  );
+  const filteredSchedules =
+    selectedStaffId === "all"
+      ? initialSchedules
+      : initialSchedules.filter((s) => s.therapist_id === selectedStaffId);
 
-  const handleFilterChange = useCallback(
-    (ids: string[]) => {
-      if (currentStaffId && !ids.includes(currentStaffId)) {
-        setSelectedTherapistIds([currentStaffId, ...ids]);
-      } else {
-        setSelectedTherapistIds(ids);
-      }
-    },
-    [currentStaffId]
-  );
+  // 表示中のスタッフが「自分」かどうかに関わらず、選択中スタッフのイベントを主役の色で表示する
+  const activeStaffId = selectedStaffId === "all" ? currentStaffId : selectedStaffId;
+
+  // 全員表示時のグレー順序（ログインユーザーが先頭）
+  const orderedStaffIds =
+    selectedStaffId === "all"
+      ? [
+          ...(currentStaffId ? [currentStaffId] : []),
+          ...staffs.filter((s) => s.id !== currentStaffId).map((s) => s.id),
+        ]
+      : [selectedStaffId];
 
   const handleRefresh = useCallback(() => router.refresh(), [router]);
 
@@ -79,21 +80,29 @@ export default function ScheduleClient({
     });
   }, []);
 
+  // 予約作成時のデフォルト担当者: 選択中スタッフ → ログインユーザー
+  const defaultCreateTherapistId =
+    panelIntent?.mode === "create"
+      ? (panelIntent.therapistId ?? (selectedStaffId !== "all" ? selectedStaffId : currentStaffId))
+      : selectedStaffId !== "all"
+        ? selectedStaffId
+        : currentStaffId;
+
   return (
     <div>
       <TherapistFilter
         staffs={staffs}
         currentStaffId={currentStaffId}
-        selectedIds={selectedTherapistIds}
-        onChange={handleFilterChange}
+        selectedId={selectedStaffId}
+        onChange={setSelectedStaffId}
       />
 
       <div className="hidden md:block">
         <CalendarView
           schedules={filteredSchedules}
           tenantId={tenantId}
-          currentStaffId={currentStaffId}
-          orderedStaffIds={selectedTherapistIds}
+          currentStaffId={activeStaffId}
+          orderedStaffIds={orderedStaffIds}
           onEventClick={(id) => {
             setPanelIntent(null);
             setOpenPanelId(id);
@@ -121,11 +130,7 @@ export default function ScheduleClient({
       <ScheduleCreatePanel
         tenantId={tenantId}
         staffs={staffs}
-        defaultTherapistId={
-          panelIntent?.mode === "create"
-            ? (panelIntent.therapistId ?? currentStaffId)
-            : currentStaffId
-        }
+        defaultTherapistId={defaultCreateTherapistId}
         defaultStart={panelIntent?.mode === "create" ? panelIntent.start : null}
         defaultEnd={panelIntent?.mode === "create" ? panelIntent.end : null}
         defaultPatientId={panelIntent?.mode === "create" ? panelIntent.patientId : undefined}
