@@ -16,6 +16,7 @@ const scheduleCreateSchema = z.object({
   start_at: z.string().min(1, "開始時刻を入力してください"),
   end_at: z.string().min(1, "終了時刻を入力してください"),
   units: z.coerce.number().int().min(1).max(9),
+  comment: z.string().max(500).optional(),
   // "yyyy-MM-dd" 形式の追加日付（ベース日以外にコピーする日）
   extra_dates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).default([]),
 });
@@ -29,6 +30,8 @@ export type ScheduleWithRelations = {
   units: number;
   recurrence_rule: string | null;
   recurrence_group_id: string | null;
+  comment: string | null;
+  is_cancelled: boolean;
   patient_name: string;
   therapist_name: string;
   therapist_icon: string;
@@ -58,6 +61,8 @@ export async function getSchedules(
       units: schedules.units,
       recurrence_rule: schedules.recurrence_rule,
       recurrence_group_id: schedules.recurrence_group_id,
+      comment: schedules.comment,
+      is_cancelled: schedules.is_cancelled,
       patient_name: patients.name_kanji,
       therapist_name: staffs.name,
       therapist_icon: staffs.icon,
@@ -308,10 +313,26 @@ export async function createSchedule(tenantId: string, input: unknown) {
       start_at: occ.start,
       end_at: occ.end,
       units: parsed.units,
-      recurrence_rule: occurrences.length > 1 ? "CUSTOM" : null,
+      comment: parsed.comment ?? null,
+      recurrence_rule: null,
       recurrence_group_id: recurrenceGroupId,
     }))
   );
+
+  revalidatePath("/schedule");
+}
+
+export async function cancelSchedule(scheduleId: string, tenantId: string, cancel: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  await db
+    .update(schedules)
+    .set({ is_cancelled: cancel, updated_at: new Date() })
+    .where(and(eq(schedules.id, scheduleId), eq(schedules.tenant_id, tenantId)));
 
   revalidatePath("/schedule");
 }
@@ -391,6 +412,7 @@ export async function moveSchedule(
   const result = await db
     .update(schedules)
     .set({
+      therapist_id: therapistId,
       start_at: startAt,
       end_at: endAt,
       ...(units !== undefined ? { units } : {}),
@@ -406,7 +428,14 @@ export async function moveSchedule(
 export async function updateSchedule(
   scheduleId: string,
   tenantId: string,
-  input: { startAt: Date; endAt: Date; units: number; therapistId: string; patientId: string }
+  input: {
+    startAt: Date;
+    endAt: Date;
+    units: number;
+    therapistId: string;
+    patientId: string;
+    comment?: string | null;
+  }
 ) {
   const supabase = await createClient();
   const {
@@ -428,6 +457,7 @@ export async function updateSchedule(
       units: input.units,
       therapist_id: input.therapistId,
       patient_id: input.patientId,
+      ...(input.comment !== undefined ? { comment: input.comment } : {}),
       updated_at: new Date(),
     })
     .where(and(eq(schedules.id, scheduleId), eq(schedules.tenant_id, tenantId)))

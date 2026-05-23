@@ -15,7 +15,7 @@ export const staffs = pgTable("staffs", {
   occupation: occupationEnum("occupation").notNull().default("pt"),
   staff_code: text("staff_code"),
   email: text("email"),
-  icon: text("icon").notNull().default("star"),
+  icon: text("icon").notNull().default("zap"),
   max_units_per_day: integer("max_units_per_day").notNull().default(18),
   max_units_per_week: integer("max_units_per_week").notNull().default(108),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

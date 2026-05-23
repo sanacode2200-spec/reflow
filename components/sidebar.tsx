@@ -19,7 +19,7 @@ import ChangePasswordModal from "@/components/change-password-modal";
 
 const navItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
-  { href: "/patients", label: "患者", icon: Users },
+  { href: "/patients", label: "患者一覧", icon: Users },
   { href: "/schedule", label: "スケジュール", icon: CalendarDays },
   { href: "/records", label: "実施記録", icon: ClipboardList },
   { href: "/settings/staffs", label: "スタッフ管理", icon: Settings },

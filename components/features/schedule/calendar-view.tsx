@@ -2,7 +2,12 @@
 
 import { useCallback, useMemo } from "react";
 import RehabCalendar from "./RehabCalendar";
-import { deleteSchedule, moveSchedule, createSchedule } from "@/lib/actions/schedule";
+import {
+  deleteSchedule,
+  moveSchedule,
+  createSchedule,
+  cancelSchedule,
+} from "@/lib/actions/schedule";
 import type { ScheduleWithRelations } from "@/lib/actions/schedule";
 import { calcUnitsFromMinutes } from "@/lib/rehab/calculator";
 import type { Schedule, Staff, Patient } from "@/lib/types";
@@ -16,6 +21,8 @@ type Props = {
   currentStaffId: string;
   tenantId: string;
   onRefresh: () => void;
+  onCreateOpen: (params: { start: Date; end: Date; therapistId: string }) => void;
+  onEditOpen: (schedule: ScheduleWithRelations) => void;
 };
 
 export default function CalendarView({
@@ -25,6 +32,8 @@ export default function CalendarView({
   currentStaffId,
   tenantId,
   onRefresh,
+  onCreateOpen,
+  onEditOpen,
 }: Props) {
   const rehabSchedules = useMemo<Schedule[]>(
     () =>
@@ -35,6 +44,10 @@ export default function CalendarView({
         start_at: s.start_at.toISOString(),
         end_at: s.end_at.toISOString(),
         recurrence_rule: s.recurrence_rule,
+        units: s.units,
+        session_status: s.session_status,
+        comment: s.comment,
+        is_cancelled: s.is_cancelled,
       })),
     [schedules]
   );
@@ -50,12 +63,8 @@ export default function CalendarView({
       const endAt = new Date(schedule.end_at);
       const diffMin = (endAt.getTime() - startAt.getTime()) / 60000;
       const units = calcUnitsFromMinutes(diffMin);
-      try {
-        await moveSchedule(schedule.id, tenantId, schedule.therapist_id, startAt, endAt, units);
-        onRefresh();
-      } catch (err) {
-        console.error("スケジュール更新エラー:", err);
-      }
+      await moveSchedule(schedule.id, tenantId, schedule.therapist_id, startAt, endAt, units);
+      onRefresh();
     },
     [tenantId, onRefresh]
   );
@@ -96,6 +105,22 @@ export default function CalendarView({
     [tenantId, onRefresh]
   );
 
+  const handleScheduleCancel = useCallback(
+    async (scheduleId: string, cancel: boolean) => {
+      await cancelSchedule(scheduleId, tenantId, cancel);
+      onRefresh();
+    },
+    [tenantId, onRefresh]
+  );
+
+  const handleEditRequested = useCallback(
+    (scheduleId: string) => {
+      const found = schedules.find((s) => s.id === scheduleId);
+      if (found) onEditOpen(found);
+    },
+    [schedules, onEditOpen]
+  );
+
   return (
     <RehabCalendar
       staffs={staffs}
@@ -105,6 +130,9 @@ export default function CalendarView({
       onScheduleUpdate={handleScheduleUpdate}
       onScheduleCreate={handleScheduleCreate}
       onScheduleDelete={handleScheduleDelete}
+      onScheduleCancel={handleScheduleCancel}
+      onCreateRequested={onCreateOpen}
+      onEditRequested={handleEditRequested}
     />
   );
 }

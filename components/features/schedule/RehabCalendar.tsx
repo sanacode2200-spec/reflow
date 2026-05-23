@@ -5,17 +5,36 @@ import {
   DndContext,
   PointerSensor,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+
+// リサイズハンドル上では dnd-kit のドラッグを起動しないカスタムセンサー
+class NoDndPointerSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: "onPointerDown" as const,
+      handler({ nativeEvent }: { nativeEvent: PointerEvent }) {
+        if (
+          nativeEvent.target instanceof HTMLElement &&
+          nativeEvent.target.closest("[data-no-dnd]")
+        ) {
+          return false;
+        }
+        return true;
+      },
+    },
+  ] as typeof PointerSensor.activators;
+}
 import { addDays, addWeeks, format, startOfWeek, subWeeks } from "date-fns";
 import type { Patient, Schedule, ScheduleInstance, Staff } from "@/lib/types";
 import { GRID_END_HOUR, GRID_START_HOUR, getTotalSlots, snapMinutesToSlot } from "@/lib/grid";
 import { expandSchedules } from "@/lib/recurrence";
 import CalendarGrid from "./CalendarGrid";
+import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
 import CopyDatePicker from "./CopyDatePicker";
-import DetailPanel from "./DetailPanel";
 import DragLayer from "./DragLayer";
 
 export type RehabCalendarProps = {
@@ -24,9 +43,12 @@ export type RehabCalendarProps = {
   schedules: Schedule[];
   currentStaffId: string;
   initialWeek?: Date;
-  onScheduleUpdate?: (schedule: Schedule) => void;
+  onScheduleUpdate?: (schedule: Schedule) => Promise<void>;
   onScheduleCreate?: (schedules: Schedule[]) => void;
   onScheduleDelete?: (scheduleId: string) => void;
+  onScheduleCancel?: (scheduleId: string, cancel: boolean) => Promise<void>;
+  onCreateRequested?: (params: { start: Date; end: Date; therapistId: string }) => void;
+  onEditRequested?: (scheduleId: string) => void;
 };
 
 const OCCUPATION_CHIP: Record<string, string> = {
@@ -35,12 +57,24 @@ const OCCUPATION_CHIP: Record<string, string> = {
   st: "bg-violet-100 text-violet-700 border-violet-300",
 };
 
-// CalendarGrid 内の sticky ヘッダー2行分の実測高さ（曜日行 + スタッフ名行）
 const GRID_HEADER_PX = 96;
-// 20分スロット数: 8:00〜18:00 = 600分 / 20 = 30
 const TOTAL_SLOTS_20 = getTotalSlots(20);
 
 type SlotMinutes = 20 | 10 | 5;
+
+type Selection = {
+  dayIdx: number;
+  staffId: string;
+  startMin: number;
+  endMin: number;
+  columnTop: number;
+} | null;
+
+type ContextMenuState = {
+  x: number;
+  y: number;
+  items: ContextMenuItem[];
+} | null;
 
 export default function RehabCalendar({
   staffs,
@@ -50,7 +84,10 @@ export default function RehabCalendar({
   initialWeek,
   onScheduleUpdate,
   onScheduleCreate,
-  onScheduleDelete: _onScheduleDelete,
+  onScheduleDelete,
+  onScheduleCancel,
+  onCreateRequested,
+  onEditRequested,
 }: RehabCalendarProps) {
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(initialWeek ?? new Date(), { weekStartsOn: 1 })
@@ -58,6 +95,7 @@ export default function RehabCalendar({
   const [visibleStaffIds, setVisibleStaffIds] = useState<string[]>([currentStaffId]);
   const [selectedInstance, setSelectedInstance] = useState<ScheduleInstance | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [hoverColId, setHoverColId] = useState<string | null>(null);
   const [showCopyPicker, setShowCopyPicker] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
@@ -65,6 +103,26 @@ export default function RehabCalendar({
   const [slotMinutes, setSlotMinutes] = useState<SlotMinutes>(20);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [containerH, setContainerH] = useState(700);
+
+  // ドラッグ選択
+  const [selection, setSelection] = useState<Selection>(null);
+  const selectionRef = useRef<Selection>(null);
+  const isSelectingRef = useRef(false);
+
+  // リサイズ
+  const [resizing, setResizing] = useState<{ instanceId: string; newEndMin: number } | null>(null);
+  const isResizingRef = useRef(false);
+  const resizingRef = useRef<{
+    instance: ScheduleInstance;
+    columnTop: number;
+    currentEndMin: number;
+    minEndMin: number;
+  } | null>(null);
+
+  // コンテキストメニュー
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+  const [localUpdates, setLocalUpdates] = useState<Map<string, Schedule>>(new Map());
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -74,14 +132,102 @@ export default function RehabCalendar({
     return () => obs.disconnect();
   }, []);
 
-  // 20分スロット基準の高さ（コンテナにぴったり収まるよう計算、最低18px）
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalUpdates(new Map());
+  }, [schedules]);
+
+  // 選択・リサイズのマウスイベントをwindowで追跡
+  useEffect(() => {
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const fmtLocal = (d: Date) =>
+      `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:00`;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // ドラッグ選択
+      if (isSelectingRef.current && selectionRef.current) {
+        const relY = e.clientY - selectionRef.current.columnTop;
+        const rawMin =
+          GRID_START_HOUR * 60 +
+          Math.floor(relY / slotHeightPxRef.current) * slotMinutesRef.current;
+        const endMin = Math.max(
+          GRID_START_HOUR * 60 + slotMinutesRef.current,
+          Math.min(
+            GRID_END_HOUR * 60,
+            snapMinutesToSlot(rawMin, slotMinutesRef.current) + slotMinutesRef.current
+          )
+        );
+        const updated = { ...selectionRef.current, endMin };
+        selectionRef.current = updated;
+        setSelection({ ...updated });
+      }
+      // リサイズ
+      if (isResizingRef.current && resizingRef.current) {
+        const { columnTop, minEndMin } = resizingRef.current;
+        const relY = e.clientY - columnTop;
+        const rawMin =
+          GRID_START_HOUR * 60 + (relY / slotHeightPxRef.current) * slotMinutesRef.current;
+        const snapped = snapMinutesToSlot(rawMin, slotMinutesRef.current);
+        const clamped = Math.max(minEndMin, Math.min(GRID_END_HOUR * 60, snapped));
+        resizingRef.current.currentEndMin = clamped;
+        setResizing({ instanceId: resizingRef.current.instance.id, newEndMin: clamped });
+      }
+    };
+    const handleMouseUp = () => {
+      if (isSelectingRef.current) {
+        isSelectingRef.current = false;
+      }
+      if (isResizingRef.current && resizingRef.current) {
+        isResizingRef.current = false;
+        const { instance, currentEndMin } = resizingRef.current;
+        resizingRef.current = null;
+        setResizing(null);
+
+        const original = schedulesRef.current.find((s) => s.id === instance.schedule_id);
+        if (original && onScheduleUpdateRef.current) {
+          const endAt = new Date(instance.start_at);
+          endAt.setHours(Math.floor(currentEndMin / 60), currentEndMin % 60, 0, 0);
+          void onScheduleUpdateRef
+            .current({ ...original, end_at: fmtLocal(endAt) })
+            ?.catch((err: unknown) => {
+              setMoveError(err instanceof Error ? err.message : "予約の変更に失敗しました");
+            });
+        }
+      }
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  // スロット高の最新値をrefで管理（mousemoveハンドラから参照するため）
+  const slotMinutesRef = useRef(slotMinutes);
+  const slotHeightPxRef = useRef(0);
+  // stale closure 回避用 refs
+  const schedulesRef = useRef(schedules);
+  // eslint-disable-next-line react-hooks/refs, react-hooks/immutability
+  schedulesRef.current = schedules;
+  const onScheduleUpdateRef = useRef(onScheduleUpdate);
+  // eslint-disable-next-line react-hooks/refs, react-hooks/immutability
+  onScheduleUpdateRef.current = onScheduleUpdate;
+
   const baseSlotHeightPx = Math.max(18, Math.floor((containerH - GRID_HEADER_PX) / TOTAL_SLOTS_20));
 
   const slotHeightPx = useMemo(() => {
+    // 10分/5分は 20分基準より小さくしつつ、クリック可能な最低高さを確保
+    // グリッドが縦長になるのは許容（スクロールで対応）
     if (slotMinutes === 20) return baseSlotHeightPx;
-    if (slotMinutes === 10) return baseSlotHeightPx; // 同じ高さ、スロット数2倍でスクロール
-    return Math.max(12, Math.ceil(baseSlotHeightPx / 2)); // 5分は半分
+    if (slotMinutes === 10) return Math.max(16, Math.floor(baseSlotHeightPx * 0.75));
+    return Math.max(12, Math.floor(baseSlotHeightPx * 0.6));
   }, [slotMinutes, baseSlotHeightPx]);
+
+  // eslint-disable-next-line react-hooks/refs, react-hooks/immutability
+  slotHeightPxRef.current = slotHeightPx;
+  // eslint-disable-next-line react-hooks/refs, react-hooks/immutability
+  slotMinutesRef.current = slotMinutes;
 
   const weekDays = useMemo(
     () => Array.from({ length: 6 }, (_, i) => addDays(currentWeekStart, i)),
@@ -89,9 +235,14 @@ export default function RehabCalendar({
   );
   const weekEnd = useMemo(() => addDays(currentWeekStart, 5), [currentWeekStart]);
 
+  const effectiveSchedules = useMemo(() => {
+    if (localUpdates.size === 0) return schedules;
+    return schedules.map((s) => localUpdates.get(s.id) ?? s);
+  }, [schedules, localUpdates]);
+
   const instances = useMemo(
-    () => expandSchedules(schedules, currentWeekStart, weekEnd),
-    [schedules, currentWeekStart, weekEnd]
+    () => expandSchedules(effectiveSchedules, currentWeekStart, weekEnd),
+    [effectiveSchedules, currentWeekStart, weekEnd]
   );
 
   const patientMap = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
@@ -107,7 +258,26 @@ export default function RehabCalendar({
     [staffs, visibleStaffIds]
   );
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const activeOccupation = useMemo(() => {
+    if (!activeId) return null;
+    const inst = instances.find((i) => i.id === activeId);
+    return inst ? (staffMap.get(inst.therapist_id)?.occupation ?? null) : null;
+  }, [activeId, instances, staffMap]);
+
+  const hoverTargetStaff = useMemo(() => {
+    if (!hoverColId) return undefined;
+    const parts = hoverColId.split("-");
+    if (parts[0] !== "col" || parts.length !== 3) return undefined;
+    const sIdx = parseInt(parts[2] ?? "0", 10);
+    return staffs[sIdx];
+  }, [hoverColId, staffs]);
+
+  const isValidDropTarget =
+    !activeOccupation || !hoverTargetStaff || hoverTargetStaff.occupation === activeOccupation;
+
+  const sensors = useSensors(
+    useSensor(NoDndPointerSensor, { activationConstraint: { distance: 4 } })
+  );
 
   const activeInstance = useMemo(
     () => (activeId ? (instances.find((i) => i.id === activeId) ?? null) : null),
@@ -148,6 +318,10 @@ export default function RehabCalendar({
           start_at: fmtLocal(start),
           end_at: fmtLocal(end),
           recurrence_rule: null,
+          units: selectedInstance.units,
+          session_status: null,
+          comment: selectedInstance.comment,
+          is_cancelled: false,
         };
       });
 
@@ -161,9 +335,19 @@ export default function RehabCalendar({
     setActiveId(String(e.active.id));
   }, []);
 
+  const handleDragOver = useCallback((e: DragOverEvent) => {
+    setHoverColId(e.over ? String(e.over.id) : null);
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+    setHoverColId(null);
+  }, []);
+
   const handleDragEnd = useCallback(
     (e: DragEndEvent) => {
       setActiveId(null);
+      setHoverColId(null);
       const { active, over, delta } = e;
       if (!over) return;
 
@@ -178,6 +362,10 @@ export default function RehabCalendar({
       const targetDay = weekDays[dIdx];
       const targetStaff = staffs[sIdx];
       if (!targetDay || !targetStaff) return;
+
+      // 同一職種のみ移動可能
+      const draggedStaff = staffMap.get(instance.therapist_id);
+      if (draggedStaff?.occupation !== targetStaff.occupation) return;
 
       const durationMs = instance.end_at.getTime() - instance.start_at.getTime();
       const durationMin = durationMs / 60000;
@@ -202,58 +390,221 @@ export default function RehabCalendar({
 
       const original = schedules.find((s) => s.id === instance.schedule_id);
       if (original) {
-        onScheduleUpdate?.({
+        const updatedSchedule = {
           ...original,
           therapist_id: targetStaff.id,
           start_at: fmtLocal(newStartAt),
           end_at: fmtLocal(newEndAt),
+        };
+        const originalId = original.id;
+        setLocalUpdates((prev) => new Map(prev).set(originalId, updatedSchedule));
+        void onScheduleUpdate?.(updatedSchedule)?.catch((err: unknown) => {
+          setLocalUpdates((prev) => {
+            const next = new Map(prev);
+            next.delete(originalId);
+            return next;
+          });
+          setMoveError(err instanceof Error ? err.message : "予約の移動に失敗しました");
         });
       }
       setSelectedInstance(null);
     },
-    [instances, weekDays, staffs, slotHeightPx, slotMinutes]
+    [instances, weekDays, staffs, staffMap, schedules, slotHeightPx, slotMinutes]
+  );
+
+  // ドラッグ選択開始
+  const handleSelectionStart = useCallback(
+    (dayIdx: number, staffId: string, startMin: number, columnTop: number) => {
+      setContextMenu(null);
+      const sel: Selection = {
+        dayIdx,
+        staffId,
+        startMin,
+        endMin: startMin + slotMinutes,
+        columnTop,
+      };
+      selectionRef.current = sel;
+      setSelection(sel);
+      isSelectingRef.current = true;
+    },
+    [slotMinutes]
+  );
+
+  // リサイズ開始
+  const handleResizeStart = useCallback(
+    (instance: ScheduleInstance, clientY: number, columnTop: number) => {
+      setContextMenu(null);
+      setSelection(null);
+      selectionRef.current = null;
+      isSelectingRef.current = false;
+
+      const startMin = instance.start_at.getHours() * 60 + instance.start_at.getMinutes();
+      const endMin = instance.end_at.getHours() * 60 + instance.end_at.getMinutes();
+
+      isResizingRef.current = true;
+      resizingRef.current = {
+        instance,
+        columnTop,
+        currentEndMin: endMin,
+        minEndMin: startMin + slotMinutesRef.current,
+      };
+      setResizing({ instanceId: instance.id, newEndMin: endMin });
+    },
+    []
+  );
+
+  // 空セルの右クリック
+  const handleCellContextMenu = useCallback(
+    (x: number, y: number, dayIdx: number, staffId: string, clickedMin: number) => {
+      const day = weekDays[dayIdx];
+      if (!day) return;
+
+      // 選択範囲があればそれを使う
+      const sel = selectionRef.current;
+      const useSelection =
+        sel && sel.dayIdx === dayIdx && sel.staffId === staffId && !isSelectingRef.current;
+
+      const startMin = useSelection ? Math.min(sel.startMin, sel.endMin) : clickedMin;
+      const endMin = useSelection ? Math.max(sel.startMin, sel.endMin) : clickedMin + slotMinutes;
+
+      const start = new Date(day);
+      start.setHours(Math.floor(startMin / 60), startMin % 60, 0, 0);
+      const end = new Date(day);
+      end.setHours(Math.floor(endMin / 60), endMin % 60, 0, 0);
+
+      const formatT = (d: Date) => format(d, "HH:mm");
+      setContextMenu({
+        x,
+        y,
+        items: [
+          {
+            label: `予約を作成（${formatT(start)}〜${formatT(end)}）`,
+            onClick: () => {
+              onCreateRequested?.({ start, end, therapistId: staffId });
+              setSelection(null);
+              selectionRef.current = null;
+            },
+          },
+        ],
+      });
+    },
+    [weekDays, slotMinutes, onCreateRequested]
+  );
+
+  // 予約枠の右クリック
+  const handleEventContextMenu = useCallback(
+    (x: number, y: number, instance: ScheduleInstance) => {
+      setContextMenu({
+        x,
+        y,
+        items: [
+          {
+            label: "編集",
+            onClick: () => onEditRequested?.(instance.schedule_id),
+          },
+          {
+            label: "複数日にコピー",
+            onClick: () => {
+              setSelectedInstance(instance);
+              setShowCopyPicker(true);
+            },
+          },
+          {
+            label: instance.is_cancelled ? "中止を解除" : "中止にする",
+            onClick: () => {
+              void onScheduleCancel?.(instance.schedule_id, !instance.is_cancelled)?.catch(
+                (err: unknown) => {
+                  setMoveError(err instanceof Error ? err.message : "操作に失敗しました");
+                }
+              );
+            },
+          },
+          {
+            label: "削除",
+            danger: true,
+            onClick: () => {
+              if (window.confirm("この予約を削除しますか？")) {
+                onScheduleDelete?.(instance.schedule_id);
+              }
+            },
+          },
+        ],
+      });
+    },
+    [onEditRequested, onScheduleDelete, onScheduleCancel]
   );
 
   const weekLabel = `${format(currentWeekStart, "yyyy年M月d日")} 〜 ${format(weekEnd, "M月d日")}`;
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex h-full flex-col overflow-hidden bg-gray-50">
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <div
+        className="relative flex h-full flex-col overflow-hidden bg-gray-50"
+        onClick={() => {
+          setSelection(null);
+          selectionRef.current = null;
+          setContextMenu(null);
+        }}
+      >
+        {/* ── エラーバナー ── */}
+        {moveError && (
+          <div className="absolute top-2 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600 shadow-md">
+            {moveError}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMoveError(null);
+              }}
+              className="leading-none opacity-60 hover:opacity-100"
+            >
+              ×
+            </button>
+          </div>
+        )}
         {/* ── ナビゲーションバー ── */}
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-4 py-2">
+        <div
+          className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-100 bg-white px-4 py-3"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* 週ナビ */}
           <button
             onClick={() => setCurrentWeekStart((w) => subWeeks(w, 1))}
-            className="rounded border border-gray-300 px-3 py-1 text-sm transition-colors hover:bg-gray-100"
+            className="rounded-lg px-3 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
             ← 前週
           </button>
-          <span className="min-w-[180px] text-center text-sm font-semibold text-gray-800">
+          <span className="min-w-[180px] text-center text-sm font-bold text-slate-800">
             {weekLabel}
           </span>
           <button
             onClick={() => setCurrentWeekStart((w) => addWeeks(w, 1))}
-            className="rounded border border-gray-300 px-3 py-1 text-sm transition-colors hover:bg-gray-100"
+            className="rounded-lg px-3 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
             翌週 →
           </button>
           <button
             onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-            className="rounded border border-gray-300 px-3 py-1 text-sm transition-colors hover:bg-gray-100"
+            className="rounded-lg px-3 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
             今週
           </button>
 
           {/* 時間刻み切り替え */}
-          <div className="ml-2 flex overflow-hidden rounded border border-gray-200 text-sm">
+          <div className="ml-2 flex overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm">
             {([20, 10, 5] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setSlotMinutes(m)}
-                className={`px-2.5 py-1 transition-colors ${
+                className={`rounded-md px-3 py-1 transition-all ${
                   slotMinutes === m
-                    ? "bg-gray-900 text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-100"
+                    ? "bg-white font-medium text-slate-800 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
                 }`}
               >
                 {m}分
@@ -288,7 +639,6 @@ export default function RehabCalendar({
               );
             })}
 
-            {/* スタッフ追加ボタン */}
             {addableStaffs.length > 0 && (
               <div className="relative" ref={addMenuRef}>
                 <button
@@ -321,18 +671,15 @@ export default function RehabCalendar({
               </div>
             )}
           </div>
-
-          {/* 凡例 */}
-          <div className="ml-auto flex items-center gap-2 text-[11px] text-gray-400">
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-yellow-400" /> 繰り返し
-            </span>
-          </div>
         </div>
 
         {/* ── メインエリア ── */}
         <div className="flex flex-1 overflow-hidden">
-          <div ref={scrollRef} className="flex-1 overflow-auto">
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <CalendarGrid
               staffs={staffs}
               visibleStaffs={visibleStaffs}
@@ -344,19 +691,16 @@ export default function RehabCalendar({
               staffMap={staffMap}
               slotMinutes={slotMinutes}
               slotHeightPx={slotHeightPx}
-              onEventSelect={setSelectedInstance}
+              activeOccupation={activeOccupation}
+              selection={selection}
+              resizing={resizing}
+              onEventSelect={(inst) => onEditRequested?.(inst.schedule_id)}
+              onEventContextMenu={handleEventContextMenu}
+              onSelectionStart={handleSelectionStart}
+              onCellContextMenu={handleCellContextMenu}
+              onResizeStart={handleResizeStart}
             />
           </div>
-
-          {selectedInstance && (
-            <DetailPanel
-              instance={selectedInstance}
-              patient={patientMap.get(selectedInstance.patient_id)}
-              staff={staffMap.get(selectedInstance.therapist_id)}
-              onClose={() => setSelectedInstance(null)}
-              onCopyRequest={() => setShowCopyPicker(true)}
-            />
-          )}
         </div>
       </div>
 
@@ -366,6 +710,8 @@ export default function RehabCalendar({
         staff={activeInstance ? staffMap.get(activeInstance.therapist_id) : undefined}
         slotMinutes={slotMinutes}
         slotHeightPx={slotHeightPx}
+        targetStaff={hoverTargetStaff}
+        isValidTarget={isValidDropTarget}
       />
 
       {showCopyPicker && selectedInstance && (
@@ -374,6 +720,16 @@ export default function RehabCalendar({
           schedules={schedules}
           onCancel={() => setShowCopyPicker(false)}
           onConfirm={handleCopyConfirm}
+        />
+      )}
+
+      {/* コンテキストメニュー */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
         />
       )}
     </DndContext>

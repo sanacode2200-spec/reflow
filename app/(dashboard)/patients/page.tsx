@@ -23,7 +23,7 @@ export default async function PatientsPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold text-[#111]">患者一覧</h1>
         <Link href="/patients/new">
-          <Button className="flex items-center gap-1.5 bg-black hover:bg-[#111]" size="sm">
+          <Button className="flex items-center gap-1.5 bg-black hover:bg-[#111]">
             <Plus size={14} />
             患者を登録
           </Button>

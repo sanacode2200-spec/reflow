@@ -13,30 +13,42 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChevronRight, ChevronLeft, AlertTriangle, CheckCircle } from "lucide-react";
 
-const schema = z.object({
-  patient_code: z.string().min(1, "患者IDを入力してください"),
-  name_kanji: z.string().min(1, "氏名（漢字）を入力してください"),
-  name_kana: z.string().min(1, "氏名（カナ）を入力してください"),
-  birth_date: z.string().min(1, "生年月日を入力してください"),
-  gender: z.enum(["male", "female", "other"]),
-  patient_type: z.enum(["inpatient", "outpatient"]),
-  insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
-  main_diagnosis: z.string().min(1, "主病名を入力してください"),
-  disease_category: z.enum([
-    "cerebrovascular",
-    "musculoskeletal",
-    "disuse_syndrome",
-    "cardiovascular",
-    "respiratory",
-  ]),
-  facility_grade: z.enum(["grade_1", "grade_2", "grade_3"]),
-  rehab_start_date: z.string().min(1, "リハビリ開始日を入力してください"),
-  onset_date: z.string().min(1, "起算日を入力してください"),
-  onset_type: z.enum(["onset", "surgery", "acute_exacerbation"]),
-  therapist_id: z.string().uuid("担当療法士を選択してください"),
-  is_nursing_care: z.boolean().default(false),
-  medical_history: z.string().optional(),
-});
+const optTherapistId = z.preprocess(
+  (v) => (v === "" ? null : v),
+  z.string().uuid().nullable().optional()
+);
+
+const schema = z
+  .object({
+    patient_code: z.string().min(1, "患者IDを入力してください"),
+    name_kanji: z.string().min(1, "氏名（漢字）を入力してください"),
+    name_kana: z.string().min(1, "氏名（カナ）を入力してください"),
+    birth_date: z.string().min(1, "生年月日を入力してください"),
+    gender: z.enum(["male", "female", "other"]),
+    patient_type: z.enum(["inpatient", "outpatient"]),
+    insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
+    main_diagnosis: z.string().min(1, "主病名を入力してください"),
+    disease_category: z.enum([
+      "cerebrovascular",
+      "musculoskeletal",
+      "disuse_syndrome",
+      "cardiovascular",
+      "respiratory",
+    ]),
+    facility_grade: z.enum(["grade_1", "grade_2", "grade_3"]),
+    rehab_start_date: z.string().min(1, "リハビリ開始日を入力してください"),
+    onset_date: z.string().min(1, "起算日を入力してください"),
+    onset_type: z.enum(["onset", "surgery", "acute_exacerbation"]),
+    pt_therapist_id: optTherapistId,
+    ot_therapist_id: optTherapistId,
+    st_therapist_id: optTherapistId,
+    is_nursing_care: z.boolean().default(false),
+    medical_history: z.string().optional(),
+  })
+  .refine((d) => d.pt_therapist_id || d.ot_therapist_id || d.st_therapist_id, {
+    message: "いずれか1人以上選択してください",
+    path: ["pt_therapist_id"],
+  });
 
 type Form = z.infer<typeof schema>;
 type Staff = { id: string; name: string; occupation: string };
@@ -46,11 +58,10 @@ const stepTitles = ["基本情報", "保険・診療", "リハビリ情報", "�
 const stepFields: (keyof Form)[][] = [
   ["patient_code", "name_kanji", "name_kana", "birth_date", "gender", "patient_type"],
   ["insurance_type", "main_diagnosis", "disease_category"],
-  ["rehab_start_date", "onset_date", "onset_type", "therapist_id"],
+  ["rehab_start_date", "onset_date", "onset_type"],
   [],
 ];
 
-const OCCUPATION: Record<string, string> = { pt: "PT", ot: "OT", st: "ST" };
 const GENDER_OPTIONS = [
   { value: "male", label: "男性" },
   { value: "female", label: "女性" },
@@ -99,7 +110,9 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
       rehab_start_date: format(new Date(), "yyyy-MM-dd"),
       onset_date: "",
       onset_type: "onset",
-      therapist_id: staffs[0]?.id ?? "",
+      pt_therapist_id: staffs.find((s) => s.occupation === "pt")?.id ?? "",
+      ot_therapist_id: "",
+      st_therapist_id: "",
       is_nursing_care: false,
       medical_history: "",
     },
@@ -118,6 +131,16 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
     if (fields && fields.length > 0) {
       const valid = await form.trigger(fields as Parameters<typeof form.trigger>[0]);
       if (!valid) return;
+    }
+    // ステップ2（リハビリ情報）では主担当の1人以上チェック
+    if (step === 2) {
+      const { pt_therapist_id, ot_therapist_id, st_therapist_id } = form.getValues();
+      if (!pt_therapist_id && !ot_therapist_id && !st_therapist_id) {
+        form.setError("pt_therapist_id", {
+          message: "PT・OT・STのいずれか1人以上選択してください",
+        });
+        return;
+      }
     }
     setStep((s) => s + 1);
   };
@@ -341,15 +364,58 @@ function Step2({ form }: { form: UseFormReturn<Form> }) {
   );
 }
 
+function TherapistSelect({
+  label,
+  occupation,
+  staffs,
+  value,
+  onChange,
+  error,
+}: {
+  label: string;
+  occupation: string;
+  staffs: Staff[];
+  value: string;
+  onChange: (v: string) => void;
+  error?: string;
+}) {
+  const filtered = staffs.filter((s) => s.occupation === occupation);
+  return (
+    <div className="space-y-1.5">
+      <Label>
+        <span className="text-[10px] font-bold tracking-wide text-[#888] uppercase">
+          {occupation.toUpperCase()}
+        </span>{" "}
+        {label}
+      </Label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+      >
+        <option value="">— なし —</option>
+        {filtered.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
+
 function Step3({
   form,
   staffs,
   additionAlert,
 }: {
   form: UseFormReturn<Form>;
-  staffs: { id: string; name: string; occupation: string }[];
+  staffs: Staff[];
   additionAlert: ReturnType<typeof checkAdditions> | null;
 }) {
+  const ptError = form.formState.errors.pt_therapist_id?.message;
+
   return (
     <div className="space-y-4">
       <h2 className="font-semibold text-[#111]">リハビリ情報</h2>
@@ -399,17 +465,35 @@ function Step3({
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label>担当療法士</Label>
-        <SelectField label="担当療法士" {...form.register("therapist_id")}>
-          {staffs.map((s) => (
-            <option key={s.id} value={s.id}>
-              {OCCUPATION[s.occupation] ?? s.occupation} {s.name}
-            </option>
-          ))}
-        </SelectField>
-        <FieldError msg={form.formState.errors.therapist_id?.message} />
+      <div className="space-y-3 rounded-lg border border-[#eaeaea] p-4">
+        <p className="text-sm font-medium text-[#111]">
+          主担当
+          <span className="ml-1.5 text-xs font-normal text-[#888]">（1人以上必須）</span>
+        </p>
+        <TherapistSelect
+          label="主担当"
+          occupation="pt"
+          staffs={staffs}
+          value={form.watch("pt_therapist_id") ?? ""}
+          onChange={(v) => form.setValue("pt_therapist_id", v, { shouldValidate: true })}
+          error={ptError}
+        />
+        <TherapistSelect
+          label="主担当"
+          occupation="ot"
+          staffs={staffs}
+          value={form.watch("ot_therapist_id") ?? ""}
+          onChange={(v) => form.setValue("ot_therapist_id", v, { shouldValidate: true })}
+        />
+        <TherapistSelect
+          label="主担当"
+          occupation="st"
+          staffs={staffs}
+          value={form.watch("st_therapist_id") ?? ""}
+          onChange={(v) => form.setValue("st_therapist_id", v, { shouldValidate: true })}
+        />
       </div>
+
       <div className="space-y-1.5">
         <Label>既往歴・注意事項（任意）</Label>
         <textarea
@@ -440,12 +524,22 @@ function Step4({
   additionAlert,
 }: {
   form: UseFormReturn<Form>;
-  staffs: { id: string; name: string; occupation: string }[];
+  staffs: Staff[];
   additionAlert: ReturnType<typeof checkAdditions> | null;
 }) {
   const v = form.getValues();
-  const therapist = staffs.find((s) => s.id === v.therapist_id);
+  const ptStaff = staffs.find((s) => s.id === v.pt_therapist_id);
+  const otStaff = staffs.find((s) => s.id === v.ot_therapist_id);
+  const stStaff = staffs.find((s) => s.id === v.st_therapist_id);
   const age = v.birth_date ? differenceInYears(new Date(), parseISO(v.birth_date)) : "—";
+
+  const therapistSummary = [
+    ptStaff ? `PT ${ptStaff.name}` : null,
+    otStaff ? `OT ${otStaff.name}` : null,
+    stStaff ? `ST ${stStaff.name}` : null,
+  ]
+    .filter(Boolean)
+    .join("、");
 
   const rows = [
     ["患者ID", v.patient_code],
@@ -461,7 +555,7 @@ function Step4({
       "起算日",
       `${v.onset_date}（${ONSET_TYPE_OPTIONS.find((o) => o.value === v.onset_type)?.label ?? ""}）`,
     ],
-    ["担当療法士", therapist ? `${OCCUPATION[therapist.occupation] ?? ""} ${therapist.name}` : ""],
+    ["主担当", therapistSummary || "—"],
     ["要介護被保険者", v.is_nursing_care ? "あり" : "なし"],
   ];
 

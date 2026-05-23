@@ -37,7 +37,7 @@ export function expandSchedules(
     const baseEnd = parseISO8601(schedule.end_at);
     const durationMs = baseEnd.getTime() - baseStart.getTime();
 
-    if (!schedule.recurrence_rule) {
+    if (!schedule.recurrence_rule || schedule.recurrence_rule === "CUSTOM") {
       if (baseStart >= weekStart && baseStart <= weekEnd) {
         instances.push({
           id: schedule.id,
@@ -47,6 +47,10 @@ export function expandSchedules(
           start_at: baseStart,
           end_at: baseEnd,
           is_recurring: false,
+          units: schedule.units,
+          session_status: schedule.session_status,
+          comment: schedule.comment,
+          is_cancelled: schedule.is_cancelled,
         });
       }
       continue;
@@ -72,6 +76,10 @@ export function expandSchedules(
         start_at: start,
         end_at: end,
         is_recurring: true,
+        units: schedule.units,
+        session_status: schedule.session_status,
+        comment: schedule.comment,
+        is_cancelled: schedule.is_cancelled,
       });
     }
   }

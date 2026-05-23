@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   useReactTable,
   getCoreRowModel,
@@ -21,6 +22,7 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
+  Check,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,9 +36,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const genderLabel = { male: "男", female: "女", other: "他" };
 const insuranceLabel = { medical: "医療", workers_comp: "労災", auto_liability: "自賠責" };
-const diseaseCategoryLabel = {
+const diseaseCategoryLabel: Record<string, string> = {
   cerebrovascular: "脳血管",
   musculoskeletal: "運動器",
   disuse_syndrome: "廃用",
@@ -51,31 +52,69 @@ const patientTypeStyle = {
 
 type Staff = { id: string; name: string; occupation: string };
 type Props = { patients: PatientRow[]; tenantId: string; staffs: Staff[] };
-
 type TypeFilter = "all" | "inpatient" | "outpatient";
+type FilterKey = "patient_type" | "therapist_name" | "disease_category";
+
+const OCCUPATION_LABEL: Record<string, string> = { pt: "PT", ot: "OT", st: "ST" };
+const FILTER_COLUMNS = new Set<FilterKey>(["patient_type", "therapist_name", "disease_category"]);
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-  if (!sorted) return <ChevronsUpDown size={12} className="ml-1 text-[#ccc]" />;
+  if (!sorted) return <ChevronsUpDown size={11} className="text-[#ccc]" />;
   return sorted === "asc" ? (
-    <ChevronUp size={12} className="ml-1 text-[#111]" />
+    <ChevronUp size={11} className="text-[#111]" />
   ) : (
-    <ChevronDown size={12} className="ml-1 text-[#111]" />
+    <ChevronDown size={11} className="text-[#111]" />
   );
 }
 
-export default function PatientsClient({ patients: initial, tenantId }: Props) {
+export default function PatientsClient({ patients: initial, tenantId, staffs }: Props) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [therapistFilter, setTherapistFilter] = useState("");
+  const [diseaseFilter, setDiseaseFilter] = useState("");
+  const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<PatientRow | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  const theadRef = useRef<HTMLTableSectionElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      const target = e.target as Node;
+      const inThead = theadRef.current?.contains(target);
+      const inDropdown = dropdownRef.current?.contains(target);
+      if (!inThead && !inDropdown) {
+        setOpenFilter(null);
+        setDropdownPos(null);
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
 
   const filtered = useMemo(
     () =>
       initial.filter((p) => {
         if (!!p.deleted_at !== showArchived) return false;
         if (typeFilter !== "all" && p.patient_type !== typeFilter) return false;
+        if (
+          therapistFilter &&
+          p.therapist_id !== therapistFilter &&
+          p.pt_therapist_id !== therapistFilter &&
+          p.ot_therapist_id !== therapistFilter &&
+          p.st_therapist_id !== therapistFilter
+        )
+          return false;
+        if (diseaseFilter && p.disease_category !== diseaseFilter) return false;
         if (!search) return true;
         const q = search.toLowerCase();
         return (
@@ -84,7 +123,7 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
           p.patient_code.toLowerCase().includes(q)
         );
       }),
-    [initial, search, showArchived, typeFilter]
+    [initial, search, showArchived, typeFilter, therapistFilter, diseaseFilter]
   );
 
   const columns: ColumnDef<PatientRow>[] = [
@@ -120,7 +159,7 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
     {
       accessorKey: "patient_type",
       header: "区分",
-      enableSorting: true,
+      enableSorting: false,
       cell: ({ getValue }) => {
         const v = getValue() as keyof typeof patientTypeLabel;
         return (
@@ -132,8 +171,8 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
     },
     {
       accessorKey: "therapist_name",
-      header: "担当療法士",
-      enableSorting: true,
+      header: "主担当",
+      enableSorting: false,
       cell: ({ getValue }) => <span className="text-sm text-[#888]">{getValue() as string}</span>,
     },
     {
@@ -142,7 +181,7 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
       enableSorting: false,
       cell: ({ getValue }) => (
         <span className="text-sm text-[#888]">
-          {diseaseCategoryLabel[getValue() as keyof typeof diseaseCategoryLabel]}
+          {diseaseCategoryLabel[getValue() as string] ?? (getValue() as string)}
         </span>
       ),
     },
@@ -201,15 +240,142 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
     getFilteredRowModel: getFilteredRowModel(),
   });
 
-  const typeButtons: { value: TypeFilter; label: string }[] = [
-    { value: "all", label: "すべて" },
-    { value: "outpatient", label: "外来" },
-    { value: "inpatient", label: "入院中" },
-  ];
+  const activeLabel: Record<FilterKey, string | null> = {
+    patient_type: typeFilter !== "all" ? (typeFilter === "outpatient" ? "外来" : "入院中") : null,
+    therapist_name: therapistFilter
+      ? (staffs.find((s) => s.id === therapistFilter)?.name ?? null)
+      : null,
+    disease_category: diseaseFilter ? (diseaseCategoryLabel[diseaseFilter] ?? null) : null,
+  };
+
+  function openDropdown(e: React.MouseEvent, key: FilterKey) {
+    e.stopPropagation();
+    if (openFilter === key) {
+      setOpenFilter(null);
+      setDropdownPos(null);
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+    setOpenFilter(key);
+  }
+
+  function DropdownItem({
+    active,
+    onClick,
+    children,
+  }: {
+    active: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+  }) {
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-[#fafafa] ${
+          active ? "font-medium text-[#111]" : "text-[#555]"
+        }`}
+      >
+        <Check size={12} className={active ? "text-[#0070f3] opacity-100" : "opacity-0"} />
+        {children}
+      </button>
+    );
+  }
+
+  function renderDropdownContent() {
+    if (!openFilter) return null;
+
+    const close = () => {
+      setOpenFilter(null);
+      setDropdownPos(null);
+    };
+
+    if (openFilter === "patient_type") {
+      return (
+        <>
+          {(["all", "outpatient", "inpatient"] as const).map((v) => (
+            <DropdownItem
+              key={v}
+              active={typeFilter === v}
+              onClick={() => {
+                setTypeFilter(v);
+                close();
+              }}
+            >
+              {v === "all" ? "全て" : v === "outpatient" ? "外来" : "入院中"}
+            </DropdownItem>
+          ))}
+        </>
+      );
+    }
+
+    if (openFilter === "therapist_name") {
+      return (
+        <>
+          <DropdownItem
+            active={!therapistFilter}
+            onClick={() => {
+              setTherapistFilter("");
+              close();
+            }}
+          >
+            全て
+          </DropdownItem>
+          {staffs.map((s) => (
+            <DropdownItem
+              key={s.id}
+              active={therapistFilter === s.id}
+              onClick={() => {
+                setTherapistFilter(s.id);
+                close();
+              }}
+            >
+              {OCCUPATION_LABEL[s.occupation] ?? s.occupation} {s.name}
+            </DropdownItem>
+          ))}
+        </>
+      );
+    }
+
+    if (openFilter === "disease_category") {
+      return (
+        <>
+          <DropdownItem
+            active={!diseaseFilter}
+            onClick={() => {
+              setDiseaseFilter("");
+              close();
+            }}
+          >
+            全て
+          </DropdownItem>
+          {Object.entries(diseaseCategoryLabel).map(([v, l]) => (
+            <DropdownItem
+              key={v}
+              active={diseaseFilter === v}
+              onClick={() => {
+                setDiseaseFilter(v);
+                close();
+              }}
+            >
+              {l}
+            </DropdownItem>
+          ))}
+        </>
+      );
+    }
+
+    return null;
+  }
+
+  const hasFilter = typeFilter !== "all" || !!therapistFilter || !!diseaseFilter;
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative min-w-[200px] flex-1">
           <Search size={14} className="absolute top-1/2 left-3 -translate-y-1/2 text-[#888]" />
           <Input
@@ -220,21 +386,6 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
           />
         </div>
 
-        {/* 入院/外来フィルター */}
-        <div className="flex overflow-hidden rounded-lg border border-[#eaeaea] bg-white">
-          {typeButtons.map((btn) => (
-            <button
-              key={btn.value}
-              onClick={() => setTypeFilter(btn.value)}
-              className={`px-3 py-2 text-sm transition-colors ${
-                typeFilter === btn.value ? "bg-[#111] text-white" : "text-[#888] hover:bg-[#fafafa]"
-              }`}
-            >
-              {btn.label}
-            </button>
-          ))}
-        </div>
-
         <button
           onClick={() => setShowArchived((v) => !v)}
           className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
@@ -243,7 +394,7 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
               : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111]"
           }`}
         >
-          {showArchived ? "アーカイブ表示中" : "アーカイブを表示"}
+          {showArchived ? "アーカイブ表示中" : "アーカイブ"}
         </button>
 
         <p className="text-sm text-[#888]">{filtered.length}名</p>
@@ -251,23 +402,53 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
 
       <div className="overflow-x-auto rounded-xl border border-[#eaeaea] bg-white">
         <table className="w-full text-sm">
-          <thead>
+          <thead ref={theadRef}>
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} className="border-b border-[#eaeaea]">
-                {hg.headers.map((h) => (
-                  <th
-                    key={h.id}
-                    className={`px-4 py-3 text-left text-xs font-medium text-[#888] first:pl-5 ${
-                      h.column.getCanSort() ? "cursor-pointer select-none hover:text-[#111]" : ""
-                    }`}
-                    onClick={h.column.getToggleSortingHandler()}
-                  >
-                    <span className="flex items-center">
-                      {flexRender(h.column.columnDef.header, h.getContext())}
-                      {h.column.getCanSort() && <SortIcon sorted={h.column.getIsSorted()} />}
-                    </span>
-                  </th>
-                ))}
+                {hg.headers.map((h) => {
+                  const colId = h.column.id as FilterKey;
+                  const isFilterable = FILTER_COLUMNS.has(colId);
+                  const label = activeLabel[colId];
+                  const isOpen = openFilter === colId;
+
+                  if (isFilterable) {
+                    return (
+                      <th
+                        key={h.id}
+                        className="cursor-pointer px-4 py-3 text-left text-xs font-medium select-none first:pl-5"
+                        onClick={(e) => openDropdown(e, colId)}
+                      >
+                        <span
+                          className={`flex items-center gap-1 ${
+                            label ? "text-[#0070f3]" : "text-[#888] hover:text-[#111]"
+                          }`}
+                        >
+                          {flexRender(h.column.columnDef.header, h.getContext())}
+                          {label && <span className="font-normal">: {label}</span>}
+                          <ChevronDown
+                            size={11}
+                            className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+                          />
+                        </span>
+                      </th>
+                    );
+                  }
+
+                  return (
+                    <th
+                      key={h.id}
+                      className={`px-4 py-3 text-left text-xs font-medium text-[#888] first:pl-5 ${
+                        h.column.getCanSort() ? "cursor-pointer select-none hover:text-[#111]" : ""
+                      }`}
+                      onClick={h.column.getToggleSortingHandler()}
+                    >
+                      <span className="flex items-center gap-1">
+                        {flexRender(h.column.columnDef.header, h.getContext())}
+                        {h.column.getCanSort() && <SortIcon sorted={h.column.getIsSorted()} />}
+                      </span>
+                    </th>
+                  );
+                })}
               </tr>
             ))}
           </thead>
@@ -295,13 +476,34 @@ export default function PatientsClient({ patients: initial, tenantId }: Props) {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={columns.length} className="px-5 py-10 text-center text-sm text-[#888]">
-                  {search ? "該当する患者が見つかりません" : "患者が登録されていません"}
+                  {search || hasFilter
+                    ? "条件に一致する患者が見つかりません"
+                    : "患者が登録されていません"}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {mounted &&
+        openFilter &&
+        dropdownPos &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={{
+              position: "fixed",
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              zIndex: 9999,
+            }}
+            className="min-w-[130px] overflow-hidden rounded-lg border border-[#eaeaea] bg-white shadow-lg"
+          >
+            {renderDropdownContent()}
+          </div>,
+          document.body
+        )}
 
       <AlertDialog open={!!archiveTarget} onOpenChange={(o) => !o && setArchiveTarget(null)}>
         <AlertDialogContent>

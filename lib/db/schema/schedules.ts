@@ -1,4 +1,4 @@
-import { pgTable, uuid, integer, timestamp, text } from "drizzle-orm/pg-core";
+import { pgTable, uuid, integer, boolean, timestamp, text } from "drizzle-orm/pg-core";
 import { tenants } from "./tenants";
 import { patients } from "./patients";
 import { staffs } from "./staffs";
@@ -19,6 +19,8 @@ export const schedules = pgTable("schedules", {
   units: integer("units").notNull().default(1),
   recurrence_rule: text("recurrence_rule"),
   recurrence_group_id: uuid("recurrence_group_id"),
+  comment: text("comment"),
+  is_cancelled: boolean("is_cancelled").notNull().default(false),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }),
   deleted_at: timestamp("deleted_at", { withTimezone: true }),

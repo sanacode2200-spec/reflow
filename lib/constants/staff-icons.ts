@@ -1,9 +1,7 @@
-import { Star, Heart, Zap, Sun, Leaf, Flame, Shield, Gem, Moon, Cloud } from "lucide-react";
+import { Zap, Sun, Leaf, Flame, Shield, Gem, Moon, Cloud } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export const STAFF_ICON_KEYS = [
-  "star",
-  "heart",
   "zap",
   "sun",
   "leaf",
@@ -17,8 +15,6 @@ export const STAFF_ICON_KEYS = [
 export type StaffIconKey = (typeof STAFF_ICON_KEYS)[number];
 
 export const STAFF_ICON_MAP: Record<StaffIconKey, LucideIcon> = {
-  star: Star,
-  heart: Heart,
   zap: Zap,
   sun: Sun,
   leaf: Leaf,

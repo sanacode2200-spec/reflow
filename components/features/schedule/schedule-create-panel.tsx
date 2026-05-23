@@ -170,11 +170,12 @@ export default function ScheduleCreatePanel({
   const [patientId, setPatientId] = useState("");
   const [patientName, setPatientName] = useState("");
   const [showList, setShowList] = useState(false);
-  const [therapistId, setTherapistId] = useState(defaultTherapistId ?? staffs[0]?.id ?? "");
+  const [therapistId, setTherapistId] = useState(defaultTherapistId || staffs[0]?.id || "");
   const [startStr, setStartStr] = useState("");
   const [endStr, setEndStr] = useState("");
   const [units, setUnits] = useState(1);
   const [extraDates, setExtraDates] = useState<Set<string>>(new Set());
+  const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -196,6 +197,7 @@ export default function ScheduleCreatePanel({
       setPatientId(editSchedule.patient_id);
       setPatientName(editSchedule.patient_name);
       setTherapistId(editSchedule.therapist_id);
+      setComment(editSchedule.comment ?? "");
     } else if (defaultStart && defaultEnd) {
       setStartStr(format(defaultStart, "yyyy-MM-dd'T'HH:mm"));
       setEndStr(format(defaultEnd, "yyyy-MM-dd'T'HH:mm"));
@@ -203,7 +205,8 @@ export default function ScheduleCreatePanel({
       setUnits(calcUnitsFromMinutes(diffMin));
       setPatientId(defaultPatientId ?? "");
       setPatientName(defaultPatientName ?? "");
-      setTherapistId(defaultTherapistId ?? staffs[0]?.id ?? "");
+      setTherapistId(defaultTherapistId || staffs[0]?.id || "");
+      setComment("");
     }
     setPatientSearch("");
     setExtraDates(new Set());
@@ -243,6 +246,7 @@ export default function ScheduleCreatePanel({
             units,
             therapistId: therapistId,
             patientId: patientId,
+            comment: comment || null,
           });
         } else {
           await createSchedule(tenantId, {
@@ -251,6 +255,7 @@ export default function ScheduleCreatePanel({
             start_at: new Date(startStr).toISOString(),
             end_at: new Date(endStr).toISOString(),
             units,
+            comment: comment || undefined,
             extra_dates: [...extraDates],
           });
         }
@@ -348,9 +353,9 @@ export default function ScheduleCreatePanel({
                   </div>
                 </div>
 
-                {/* 担当療法士 */}
+                {/* 実施療法士 */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-[#888]">担当療法士</label>
+                  <label className="mb-1 block text-xs font-medium text-[#888]">実施療法士</label>
                   <select
                     value={therapistId}
                     onChange={(e) => setTherapistId(e.target.value)}
@@ -410,6 +415,26 @@ export default function ScheduleCreatePanel({
                     required
                   />
                   <p className="mt-1 text-xs text-[#888]">1単位=20分。患者1日上限6単位。</p>
+                </div>
+
+                {/* メモ・伝達事項 */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[#888]">
+                    メモ・伝達事項
+                  </label>
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="療法士への申し送り、注意事項など"
+                    rows={3}
+                    maxLength={500}
+                    className="w-full resize-none rounded-lg border border-[#eaeaea] px-3 py-2 text-sm focus:border-[#111] focus:outline-none"
+                  />
+                  {comment.length > 400 && (
+                    <p className="mt-0.5 text-right text-[10px] text-[#888]">
+                      {comment.length}/500
+                    </p>
+                  )}
                 </div>
 
                 {/* 複数日付選択（新規作成時のみ） */}

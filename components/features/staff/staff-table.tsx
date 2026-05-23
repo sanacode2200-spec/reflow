@@ -12,8 +12,6 @@ import {
 } from "@tanstack/react-table";
 import { archiveStaff } from "@/lib/actions/staff";
 import type { StaffRow } from "@/lib/actions/staff";
-import { STAFF_ICON_MAP } from "@/lib/constants/staff-icons";
-import type { StaffIconKey } from "@/lib/constants/staff-icons";
 import StaffModal from "./staff-modal";
 import ResetPasswordModal from "./reset-password-modal";
 import { Button } from "@/components/ui/button";
@@ -71,20 +69,12 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
     {
       accessorKey: "name",
       header: "氏名",
-      cell: ({ row }) => {
-        const Icon = STAFF_ICON_MAP[row.original.icon as StaffIconKey] ?? STAFF_ICON_MAP["star"];
-        return (
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#111] text-white">
-              <Icon size={14} />
-            </span>
-            <div>
-              <p className="font-medium text-[#111]">{row.original.name}</p>
-              <p className="text-xs text-[#888]">{row.original.name_kana}</p>
-            </div>
-          </div>
-        );
-      },
+      cell: ({ row }) => (
+        <div>
+          <p className="font-medium text-[#111]">{row.original.name}</p>
+          <p className="text-xs text-[#888]">{row.original.name_kana}</p>
+        </div>
+      ),
     },
     {
       accessorKey: "occupation",

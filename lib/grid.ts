@@ -27,13 +27,14 @@ export function durationToPx(
 export function getHourLabels(
   slotMinutes: number,
   slotHeightPx: number
-): { label: string; topPx: number }[] {
-  const labels: { label: string; topPx: number }[] = [];
+): { label: string; topPx: number; hour: number }[] {
+  const labels: { label: string; topPx: number; hour: number }[] = [];
   for (let h = GRID_START_HOUR; h <= GRID_END_HOUR; h++) {
     const minutesFromStart = (h - GRID_START_HOUR) * 60;
     labels.push({
       label: `${String(h).padStart(2, "0")}:00`,
       topPx: (minutesFromStart / slotMinutes) * slotHeightPx,
+      hour: h,
     });
   }
   return labels;

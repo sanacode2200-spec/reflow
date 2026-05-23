@@ -13,6 +13,11 @@ const CalendarView = dynamic(() => import("@/components/features/schedule/calend
 
 type PatientRow = { id: string; name_kanji: string };
 
+type PanelState =
+  | { mode: "create"; start: Date; end: Date; therapistId: string }
+  | { mode: "edit"; schedule: ScheduleWithRelations }
+  | null;
+
 type Props = {
   schedules: ScheduleWithRelations[];
   staffs: Staff[];
@@ -29,7 +34,7 @@ export default function ScheduleClient({
   tenantId,
 }: Props) {
   const router = useRouter();
-  const [createStart, setCreateStart] = useState<Date | null>(null);
+  const [panelState, setPanelState] = useState<PanelState>(null);
 
   const handleRefresh = useCallback(() => router.refresh(), [router]);
 
@@ -37,7 +42,12 @@ export default function ScheduleClient({
     const now = new Date();
     const rounded = new Date(now);
     rounded.setMinutes(Math.ceil(now.getMinutes() / 20) * 20, 0, 0);
-    setCreateStart(rounded);
+    setPanelState({
+      mode: "create",
+      start: rounded,
+      end: new Date(rounded.getTime() + 20 * 60 * 1000),
+      therapistId: currentStaffId ?? staffs[0]?.id ?? "",
+    });
   }
 
   return (
@@ -59,6 +69,8 @@ export default function ScheduleClient({
           currentStaffId={currentStaffId ?? ""}
           tenantId={tenantId}
           onRefresh={handleRefresh}
+          onCreateOpen={(params) => setPanelState({ mode: "create", ...params })}
+          onEditOpen={(schedule) => setPanelState({ mode: "edit", schedule })}
         />
       </div>
 
@@ -69,12 +81,19 @@ export default function ScheduleClient({
       <ScheduleCreatePanel
         tenantId={tenantId}
         staffs={staffs}
-        defaultTherapistId={currentStaffId}
-        defaultStart={createStart}
-        defaultEnd={createStart ? new Date(createStart.getTime() + 20 * 60 * 1000) : null}
-        onClose={() => setCreateStart(null)}
+        defaultTherapistId={
+          panelState?.mode === "create"
+            ? panelState.therapistId
+            : panelState?.mode === "edit"
+              ? panelState.schedule.therapist_id
+              : currentStaffId
+        }
+        defaultStart={panelState?.mode === "create" ? panelState.start : null}
+        defaultEnd={panelState?.mode === "create" ? panelState.end : null}
+        editSchedule={panelState?.mode === "edit" ? panelState.schedule : undefined}
+        onClose={() => setPanelState(null)}
         onCreated={() => {
-          setCreateStart(null);
+          setPanelState(null);
           handleRefresh();
         }}
       />

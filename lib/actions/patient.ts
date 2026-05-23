@@ -7,30 +7,42 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
-const patientSchema = z.object({
-  patient_code: z.string().min(1, "患者IDを入力してください"),
-  name_kanji: z.string().min(1, "氏名（漢字）を入力してください"),
-  name_kana: z.string().min(1, "氏名（カナ）を入力してください"),
-  birth_date: z.string().min(1, "生年月日を入力してください"),
-  gender: z.enum(["male", "female", "other"]),
-  patient_type: z.enum(["inpatient", "outpatient"]),
-  insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
-  main_diagnosis: z.string().min(1, "主病名を入力してください"),
-  disease_category: z.enum([
-    "cerebrovascular",
-    "musculoskeletal",
-    "disuse_syndrome",
-    "cardiovascular",
-    "respiratory",
-  ]),
-  facility_grade: z.enum(["grade_1", "grade_2", "grade_3"]),
-  rehab_start_date: z.string().min(1, "リハビリ開始日を入力してください"),
-  onset_date: z.string().min(1, "起算日を入力してください"),
-  onset_type: z.enum(["onset", "surgery", "acute_exacerbation"]),
-  therapist_id: z.string().uuid("担当療法士を選択してください"),
-  is_nursing_care: z.boolean().default(false),
-  medical_history: z.string().optional(),
-});
+const optTherapistId = z.preprocess(
+  (v) => (v === "" ? null : v),
+  z.string().uuid().nullable().optional()
+);
+
+const patientSchema = z
+  .object({
+    patient_code: z.string().min(1, "患者IDを入力してください"),
+    name_kanji: z.string().min(1, "氏名（漢字）を入力してください"),
+    name_kana: z.string().min(1, "氏名（カナ）を入力してください"),
+    birth_date: z.string().min(1, "生年月日を入力してください"),
+    gender: z.enum(["male", "female", "other"]),
+    patient_type: z.enum(["inpatient", "outpatient"]),
+    insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
+    main_diagnosis: z.string().min(1, "主病名を入力してください"),
+    disease_category: z.enum([
+      "cerebrovascular",
+      "musculoskeletal",
+      "disuse_syndrome",
+      "cardiovascular",
+      "respiratory",
+    ]),
+    facility_grade: z.enum(["grade_1", "grade_2", "grade_3"]),
+    rehab_start_date: z.string().min(1, "リハビリ開始日を入力してください"),
+    onset_date: z.string().min(1, "起算日を入力してください"),
+    onset_type: z.enum(["onset", "surgery", "acute_exacerbation"]),
+    pt_therapist_id: optTherapistId,
+    ot_therapist_id: optTherapistId,
+    st_therapist_id: optTherapistId,
+    is_nursing_care: z.boolean().default(false),
+    medical_history: z.string().optional(),
+  })
+  .refine((d) => d.pt_therapist_id || d.ot_therapist_id || d.st_therapist_id, {
+    message: "PT・OT・STのいずれか1人以上の主担当を選択してください",
+    path: ["pt_therapist_id"],
+  });
 
 export type PatientFormData = z.infer<typeof patientSchema>;
 
@@ -56,6 +68,9 @@ export type PatientRow = {
   onset_type: "onset" | "surgery" | "acute_exacerbation";
   therapist_id: string;
   therapist_name: string;
+  pt_therapist_id: string | null;
+  ot_therapist_id: string | null;
+  st_therapist_id: string | null;
   is_nursing_care: boolean;
   medical_history: string | null;
   deleted_at: Date | null;
@@ -95,6 +110,9 @@ export async function getPatients(
       onset_type: patients.onset_type,
       therapist_id: patients.therapist_id,
       therapist_name: staffs.name,
+      pt_therapist_id: patients.pt_therapist_id,
+      ot_therapist_id: patients.ot_therapist_id,
+      st_therapist_id: patients.st_therapist_id,
       is_nursing_care: patients.is_nursing_care,
       medical_history: patients.medical_history,
       deleted_at: patients.deleted_at,
@@ -118,6 +136,9 @@ export async function getPatients(
   return rows.map((r) => ({
     ...r,
     therapist_name: r.therapist_name ?? "",
+    pt_therapist_id: r.pt_therapist_id ?? null,
+    ot_therapist_id: r.ot_therapist_id ?? null,
+    st_therapist_id: r.st_therapist_id ?? null,
     medical_history: r.medical_history ?? null,
     deleted_at: r.deleted_at ?? null,
   }));
@@ -144,6 +165,9 @@ export async function getPatient(id: string, tenantId: string): Promise<PatientR
       onset_type: patients.onset_type,
       therapist_id: patients.therapist_id,
       therapist_name: staffs.name,
+      pt_therapist_id: patients.pt_therapist_id,
+      ot_therapist_id: patients.ot_therapist_id,
+      st_therapist_id: patients.st_therapist_id,
       is_nursing_care: patients.is_nursing_care,
       medical_history: patients.medical_history,
       deleted_at: patients.deleted_at,
@@ -157,6 +181,9 @@ export async function getPatient(id: string, tenantId: string): Promise<PatientR
   return {
     ...row,
     therapist_name: row.therapist_name ?? "",
+    pt_therapist_id: row.pt_therapist_id ?? null,
+    ot_therapist_id: row.ot_therapist_id ?? null,
+    st_therapist_id: row.st_therapist_id ?? null,
     medical_history: row.medical_history ?? null,
     deleted_at: row.deleted_at ?? null,
   };
@@ -172,9 +199,11 @@ export async function createPatient(tenantId: string, input: unknown) {
   });
   if (existing) throw new Error(`患者ID「${data.patient_code}」は既に使用されています`);
 
+  const therapist_id = (data.pt_therapist_id ?? data.ot_therapist_id ?? data.st_therapist_id)!;
+
   const [patient] = await db
     .insert(patients)
-    .values({ tenant_id: tenantId, ...data })
+    .values({ tenant_id: tenantId, ...data, therapist_id })
     .returning();
   revalidatePath("/patients");
   return patient;
@@ -184,9 +213,11 @@ export async function updatePatient(id: string, tenantId: string, input: unknown
   await assertAuth();
   const data = patientSchema.parse(input);
 
+  const therapist_id = (data.pt_therapist_id ?? data.ot_therapist_id ?? data.st_therapist_id)!;
+
   await db
     .update(patients)
-    .set({ ...data, updated_at: new Date() })
+    .set({ ...data, therapist_id, updated_at: new Date() })
     .where(and(eq(patients.id, id), eq(patients.tenant_id, tenantId)));
 
   revalidatePath("/patients");

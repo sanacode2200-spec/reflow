@@ -19,34 +19,45 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Pencil, CheckCircle } from "lucide-react";
 
-const schema = z.object({
-  patient_code: z.string().min(1),
-  name_kanji: z.string().min(1),
-  name_kana: z.string().min(1),
-  birth_date: z.string().min(1),
-  gender: z.enum(["male", "female", "other"]),
-  patient_type: z.enum(["inpatient", "outpatient"]),
-  insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
-  main_diagnosis: z.string().min(1),
-  disease_category: z.enum([
-    "cerebrovascular",
-    "musculoskeletal",
-    "disuse_syndrome",
-    "cardiovascular",
-    "respiratory",
-  ]),
-  facility_grade: z.enum(["grade_1", "grade_2", "grade_3"]),
-  rehab_start_date: z.string().min(1),
-  onset_date: z.string().min(1),
-  onset_type: z.enum(["onset", "surgery", "acute_exacerbation"]),
-  therapist_id: z.string().uuid(),
-  is_nursing_care: z.boolean(),
-  medical_history: z.string().optional(),
-});
+const optTherapistId = z.preprocess(
+  (v) => (v === "" ? null : v),
+  z.string().uuid().nullable().optional()
+);
+
+const schema = z
+  .object({
+    patient_code: z.string().min(1),
+    name_kanji: z.string().min(1),
+    name_kana: z.string().min(1),
+    birth_date: z.string().min(1),
+    gender: z.enum(["male", "female", "other"]),
+    patient_type: z.enum(["inpatient", "outpatient"]),
+    insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
+    main_diagnosis: z.string().min(1),
+    disease_category: z.enum([
+      "cerebrovascular",
+      "musculoskeletal",
+      "disuse_syndrome",
+      "cardiovascular",
+      "respiratory",
+    ]),
+    facility_grade: z.enum(["grade_1", "grade_2", "grade_3"]),
+    rehab_start_date: z.string().min(1),
+    onset_date: z.string().min(1),
+    onset_type: z.enum(["onset", "surgery", "acute_exacerbation"]),
+    pt_therapist_id: optTherapistId,
+    ot_therapist_id: optTherapistId,
+    st_therapist_id: optTherapistId,
+    is_nursing_care: z.boolean(),
+    medical_history: z.string().optional(),
+  })
+  .refine((d) => d.pt_therapist_id || d.ot_therapist_id || d.st_therapist_id, {
+    message: "いずれか1人以上選択してください",
+    path: ["pt_therapist_id"],
+  });
 
 type Form = z.infer<typeof schema>;
 type Staff = { id: string; name: string; occupation: string };
-const OCCUPATION: Record<string, string> = { pt: "PT", ot: "OT", st: "ST" };
 const DISEASE_OPTIONS = [
   { value: "cerebrovascular", label: "脳血管疾患等" },
   { value: "musculoskeletal", label: "運動器" },
@@ -94,7 +105,9 @@ export default function PatientEditModal({
       rehab_start_date: patient.rehab_start_date,
       onset_date: patient.onset_date,
       onset_type: patient.onset_type,
-      therapist_id: patient.therapist_id,
+      pt_therapist_id: patient.pt_therapist_id ?? "",
+      ot_therapist_id: patient.ot_therapist_id ?? "",
+      st_therapist_id: patient.st_therapist_id ?? "",
       is_nursing_care: patient.is_nursing_care,
       medical_history: patient.medical_history ?? "",
     },
@@ -257,18 +270,45 @@ export default function PatientEditModal({
                 )}
               </div>
             )}
-            <div className="space-y-1.5">
-              <Label>担当療法士</Label>
-              <select
-                {...form.register("therapist_id")}
-                className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
-              >
-                {staffs.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {OCCUPATION[s.occupation] ?? s.occupation} {s.name}
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-3 rounded-lg border border-[#eaeaea] p-4">
+              <p className="text-sm font-medium text-[#111]">
+                主担当
+                <span className="ml-1.5 text-xs font-normal text-[#888]">（1人以上必須）</span>
+              </p>
+              {(["pt", "ot", "st"] as const).map((occ) => {
+                const field = `${occ}_therapist_id` as
+                  | "pt_therapist_id"
+                  | "ot_therapist_id"
+                  | "st_therapist_id";
+                const filtered = staffs.filter((s) => s.occupation === occ);
+                const err =
+                  occ === "pt" ? form.formState.errors.pt_therapist_id?.message : undefined;
+                return (
+                  <div key={occ} className="space-y-1.5">
+                    <label className="text-sm text-[#888]">
+                      <span className="text-[10px] font-bold tracking-wide uppercase">
+                        {occ.toUpperCase()}
+                      </span>{" "}
+                      主担当
+                    </label>
+                    <select
+                      value={form.watch(field) ?? ""}
+                      onChange={(e) =>
+                        form.setValue(field, e.target.value, { shouldValidate: true })
+                      }
+                      className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+                    >
+                      <option value="">— なし —</option>
+                      {filtered.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    {err && <p className="text-xs text-red-500">{err}</p>}
+                  </div>
+                );
+              })}
             </div>
             <div className="space-y-1.5">
               <Label>既往歴・注意事項</Label>

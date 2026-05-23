@@ -39,6 +39,9 @@ export const patients = pgTable("patients", {
   therapist_id: uuid("therapist_id")
     .notNull()
     .references(() => staffs.id),
+  pt_therapist_id: uuid("pt_therapist_id").references(() => staffs.id),
+  ot_therapist_id: uuid("ot_therapist_id").references(() => staffs.id),
+  st_therapist_id: uuid("st_therapist_id").references(() => staffs.id),
   patient_type: patientTypeEnum("patient_type").notNull().default("outpatient"),
   is_nursing_care: boolean("is_nursing_care").notNull().default(false),
   medical_history: text("medical_history"),
