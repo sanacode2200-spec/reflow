@@ -1,6 +1,12 @@
-import { getSchedules, getStaffs, getTenantId, getCurrentStaffId } from "@/lib/actions/schedule";
+import {
+  getSchedules,
+  getStaffs,
+  getTenantId,
+  getCurrentStaffId,
+  getPatientsForSchedule,
+} from "@/lib/actions/schedule";
 import ScheduleClient from "./schedule-client";
-import { startOfWeek, endOfWeek } from "date-fns";
+import { subMonths, addMonths } from "date-fns";
 
 export default async function SchedulePage() {
   let tenantId: string;
@@ -15,13 +21,15 @@ export default async function SchedulePage() {
   }
 
   const now = new Date();
-  const from = startOfWeek(now, { weekStartsOn: 1 });
-  const to = endOfWeek(now, { weekStartsOn: 1 });
+  // RehabCalendar handles week navigation internally — load a 9-month window
+  const from = subMonths(now, 3);
+  const to = addMonths(now, 6);
 
-  const [staffs, currentStaffId, schedules] = await Promise.all([
+  const [staffs, currentStaffId, schedules, patients] = await Promise.all([
     getStaffs(tenantId),
     getCurrentStaffId(tenantId),
     getSchedules(tenantId, [], from, to),
+    getPatientsForSchedule(tenantId),
   ]);
 
   return (
@@ -30,6 +38,7 @@ export default async function SchedulePage() {
       <ScheduleClient
         schedules={schedules}
         staffs={staffs}
+        patients={patients}
         currentStaffId={currentStaffId}
         tenantId={tenantId}
       />

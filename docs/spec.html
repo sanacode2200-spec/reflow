@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RehabCalendar 仕様書</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #f8f9fa;
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* サイドナビ */
+    nav {
+      width: 220px;
+      flex-shrink: 0;
+      background: #1e293b;
+      color: #94a3b8;
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    nav .nav-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #64748b;
+      padding: 0 20px 12px;
+    }
+    nav a {
+      display: block;
+      padding: 6px 20px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 13px;
+      border-left: 2px solid transparent;
+      transition: all .15s;
+    }
+    nav a:hover { color: #e2e8f0; background: #ffffff10; }
+    nav a.active { color: #38bdf8; border-left-color: #38bdf8; background: #0ea5e910; }
+    nav .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #475569;
+      padding: 16px 20px 4px;
+    }
+
+    /* メイン */
+    main {
+      flex: 1;
+      padding: 48px 56px;
+      max-width: 900px;
+    }
+
+    h1 { font-size: 28px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .subtitle { color: #64748b; font-size: 14px; margin-bottom: 40px; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-gray { background: #f1f5f9; color: #475569; }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 48px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 28px 0 10px;
+    }
+    h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+      margin: 20px 0 8px;
+    }
+
+    p { margin-bottom: 12px; color: #374151; }
+
+    /* テーブル */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 24px;
+      font-size: 13px;
+    }
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      padding: 8px 12px;
+      font-weight: 600;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+    td {
+      padding: 8px 12px;
+      border: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+    tr:hover td { background: #fafafa; }
+    td code, th code { font-size: 12px; }
+
+    /* コード */
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px 24px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0 24px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+    p code, td code, li code {
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* アラートボックス */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin: 12px 0 20px;
+      font-size: 13px;
+      border-left: 4px solid;
+    }
+    .alert-info { background: #eff6ff; border-color: #3b82f6; color: #1e40af; }
+    .alert-warning { background: #fffbeb; border-color: #f59e0b; color: #92400e; }
+    .alert-danger { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+    .alert-success { background: #f0fdf4; border-color: #22c55e; color: #166534; }
+
+    /* リスト */
+    ul, ol { padding-left: 20px; margin-bottom: 16px; }
+    li { margin-bottom: 4px; color: #374151; }
+
+    /* セクション区切り */
+    section { margin-bottom: 8px; }
+
+    /* ファイルツリー */
+    .file-tree {
+      background: #0f172a;
+      color: #94a3b8;
+      padding: 20px 24px;
+      border-radius: 8px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      margin: 12px 0 24px;
+    }
+    .file-tree .dir { color: #7dd3fc; }
+    .file-tree .file { color: #e2e8f0; }
+    .file-tree .comment { color: #475569; }
+
+    /* ステータスバー */
+    .status-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .status-chip {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-weight: 500;
+    }
+    .chip-done { background: #dcfce7; color: #166534; }
+    .chip-todo { background: #fef9c3; color: #854d0e; }
+    .chip-na   { background: #f1f5f9; color: #64748b; }
+
+    /* フッター */
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      color: #94a3b8;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ナビゲーション -->
+  <nav>
+    <div class="nav-title">RehabCalendar</div>
+    <a href="#overview">概要</a>
+    <a href="#stack">技術スタック</a>
+    <a href="#files">ファイル構成</a>
+    <div class="section-label">API</div>
+    <a href="#types">型定義</a>
+    <a href="#props">Props</a>
+    <a href="#callbacks">コールバック</a>
+    <div class="section-label">仕様</div>
+    <a href="#grid">グリッド</a>
+    <a href="#features">実装済み機能</a>
+    <a href="#recurrence">繰り返し予約</a>
+    <a href="#dnd">ドラッグ&amp;ドロップ</a>
+    <a href="#copy">複数日コピー</a>
+    <div class="section-label">移植</div>
+    <a href="#integration">組み込み手順</a>
+    <a href="#notimpl">未実装項目</a>
+  </nav>
+
+  <!-- メインコンテンツ -->
+  <main>
+    <h1>RehabCalendar <span class="badge badge-blue">仕様書</span></h1>
+    <p class="subtitle">FullCalendar を使わない自前の療法士列×時間軸グリッド実装。ReFlow への移植を前提とした検証コンポーネント。</p>
+
+    <!-- ステータス -->
+    <div class="status-row">
+      <span class="status-chip chip-done">✓ グリッド描画</span>
+      <span class="status-chip chip-done">✓ 予約表示</span>
+      <span class="status-chip chip-done">✓ ドラッグ&amp;ドロップ</span>
+      <span class="status-chip chip-done">✓ 繰り返し展開</span>
+      <span class="status-chip chip-done">✓ 詳細パネル</span>
+      <span class="status-chip chip-done">✓ 複数日コピー</span>
+      <span class="status-chip chip-done">✓ 重複検知</span>
+      <span class="status-chip chip-done">✓ コールバックAPI</span>
+      <span class="status-chip chip-todo">△ 削除UI</span>
+      <span class="status-chip chip-todo">△ 新規作成UI</span>
+      <span class="status-chip chip-todo">△ 繰り返し編集ダイアログ</span>
+    </div>
+
+    <!-- 概要 -->
+    <section id="overview">
+      <h2>概要</h2>
+      <p>週単位で療法士ごとの予約を表示・操作するカレンダーコンポーネント。FullCalendar を使わず Tailwind CSS + dnd-kit で自前実装。</p>
+      <table>
+        <tr><th>項目</th><th>仕様</th></tr>
+        <tr><td>表示単位</td><td>週表示（月〜土の6日間）</td></tr>
+        <tr><td>時間軸</td><td>08:00 〜 18:00</td></tr>
+        <tr><td>スロット刻み</td><td>20分（= 40px）</td></tr>
+        <tr><td>グリッド高さ</td><td>1200px（30スロット × 40px）</td></tr>
+        <tr><td>列単位</td><td>療法士ごと（複数同時表示可）</td></tr>
+        <tr><td>列幅</td><td>88px / 列、時間軸列 52px</td></tr>
+      </table>
+    </section>
+
+    <!-- 技術スタック -->
+    <section id="stack">
+      <h2>技術スタック</h2>
+      <table>
+        <tr><th>ライブラリ</th><th>用途</th><th>バージョン要件</th></tr>
+        <tr><td>Next.js App Router</td><td>フレームワーク</td><td>15系</td></tr>
+        <tr><td>TypeScript</td><td>型安全</td><td>strict + noUncheckedIndexedAccess</td></tr>
+        <tr><td>Tailwind CSS</td><td>スタイリング</td><td>v4系</td></tr>
+        <tr><td>dnd-kit</td><td>ドラッグ&amp;ドロップ</td><td><code>@dnd-kit/core</code>, <code>@dnd-kit/utilities</code></td></tr>
+        <tr><td>date-fns</td><td>日付操作</td><td>v3系</td></tr>
+      </table>
+      <div class="alert alert-warning">
+        移植先に dnd-kit が入っていない場合はインストールが必要。Tailwind のバージョンが v3 の場合は一部クラス記法が異なる可能性あり。
+      </div>
+    </section>
+
+    <!-- ファイル構成 -->
+    <section id="files">
+      <h2>ファイル構成</h2>
+      <div class="file-tree">
+<span class="dir">components/rehab-calendar/</span>
+  <span class="file">├── RehabCalendar.tsx</span>   <span class="comment"># エントリポイント・状態管理・D&amp;D Context</span>
+  <span class="file">├── CalendarGrid.tsx</span>    <span class="comment"># ヘッダー + 時間軸 + droppable列グリッド</span>
+  <span class="file">├── EventBlock.tsx</span>      <span class="comment"># 予約ブロック（draggable）</span>
+  <span class="file">├── DetailPanel.tsx</span>     <span class="comment"># 右サイドパネル（クリック時）</span>
+  <span class="file">├── CopyDatePicker.tsx</span>  <span class="comment"># 複数日コピーモーダル</span>
+  <span class="file">└── DragLayer.tsx</span>       <span class="comment"># ドラッグ中オーバーレイ</span>
+
+<span class="dir">lib/</span>
+  <span class="file">├── types.ts</span>            <span class="comment"># ReFlowスキーマ準拠の型定義</span>
+  <span class="file">├── grid.ts</span>             <span class="comment"># 時間→px変換・スロット計算</span>
+  <span class="file">└── recurrence.ts</span>       <span class="comment"># 繰り返し展開・重複検知</span>
+      </div>
+    </section>
+
+    <!-- 型定義 -->
+    <section id="types">
+      <h2>型定義</h2>
+      <p><code>lib/types.ts</code> に定義。ReFlow のスキーマに準拠しており、移植時に既存型と統合・流用可能。</p>
+
+      <h3>入力データ型</h3>
+      <pre><code>type Occupation = 'pt' | 'ot' | 'st'
+
+type Staff = {
+  id: string
+  name: string
+  occupation: Occupation
+}
+
+type Patient = {
+  id: string
+  name: string
+}
+
+type Schedule = {
+  id: string
+  patient_id: string
+  therapist_id: string
+  start_at: string          // ISO8601 ローカル時刻 "2026-05-18T09:00:00"
+  end_at: string            // ISO8601 ローカル時刻
+  recurrence_rule: string | null  // iCalendar RRULE形式 or null
+}</code></pre>
+
+      <h3>内部型（展開済みインスタンス）</h3>
+      <pre><code>type ScheduleInstance = {
+  id: string            // 単発: schedule.id / 繰り返し: "{schedule_id}__{yyyy-MM-dd}"
+  schedule_id: string   // 元の Schedule.id
+  patient_id: string
+  therapist_id: string
+  start_at: Date        // Date オブジェクト（展開済み）
+  end_at: Date
+  is_recurring: boolean
+}</code></pre>
+
+      <div class="alert alert-info">
+        <code>Schedule</code> は文字列日時（DB保存形式）、<code>ScheduleInstance</code> は Date オブジェクト（描画用）。コンポーネント内部で <code>expandSchedules()</code> が変換する。
+      </div>
+    </section>
+
+    <!-- Props -->
+    <section id="props">
+      <h2>Props</h2>
+      <p>エントリポイント <code>RehabCalendar</code> の公開 Props。</p>
+      <table>
+        <tr>
+          <th>プロパティ</th>
+          <th>型</th>
+          <th>必須</th>
+          <th>説明</th>
+        </tr>
+        <tr>
+          <td><code>staffs</code></td>
+          <td><code>Staff[]</code></td>
+          <td>✓</td>
+          <td>全スタッフ一覧。D&amp;Dの列インデックス維持に使うため、表示していないスタッフも含めて渡す。</td>
+        </tr>
+        <tr>
+          <td><code>patients</code></td>
+          <td><code>Patient[]</code></td>
+          <td>✓</td>
+          <td>全患者一覧。予約ブロックと詳細パネルの名前表示に使用。</td>
+        </tr>
+        <tr>
+          <td><code>schedules</code></td>
+          <td><code>Schedule[]</code></td>
+          <td>✓</td>
+          <td>予約データ。<strong>controlled</strong>: 親が管理し、コールバック経由で更新する。</td>
+        </tr>
+        <tr>
+          <td><code>currentStaffId</code></td>
+          <td><code>string</code></td>
+          <td>✓</td>
+          <td>ログイン中のスタッフID。初期表示列の決定と削除防止（自分の列は外せない）に使用。</td>
+        </tr>
+        <tr>
+          <td><code>initialWeek</code></td>
+          <td><code>Date</code></td>
+          <td>—</td>
+          <td>初期表示週の任意の日付。省略時は今週。内部で月曜日に正規化される。</td>
+        </tr>
+      </table>
+    </section>
+
+    <!-- コールバック -->
+    <section id="callbacks">
+      <h2>コールバック</h2>
+      <p>すべてオプション。渡さない場合は操作しても UI に反映されない（controlled のため）。</p>
+
+      <table>
+        <tr>
+          <th>コールバック</th>
+          <th>型</th>
+          <th>発火タイミング</th>
+        </tr>
+        <tr>
+          <td><code>onScheduleUpdate</code></td>
+          <td><code>(schedule: Schedule) => void</code></td>
+          <td>ドラッグ&amp;ドロップ完了時。変更後の Schedule オブジェクトを渡す。</td>
+        </tr>
+        <tr>
+          <td><code>onScheduleCreate</code></td>
+          <td><code>(schedules: Schedule[]) => void</code></td>
+          <td>複数日コピー確定時。新規作成分の Schedule 配列を渡す（1件でも配列）。</td>
+        </tr>
+        <tr>
+          <td><code>onScheduleDelete</code></td>
+          <td><code>(scheduleId: string) => void</code></td>
+          <td>削除操作時（削除UIは未実装。移植先で実装後に繋ぐ）。</td>
+        </tr>
+      </table>
+
+      <h3>接続例</h3>
+      <pre><code>// 最小構成（Next.js App Router, 'use client' が必要）
+'use client'
+import { useState } from 'react'
+import RehabCalendar from '@/components/features/schedule/RehabCalendar'
+
+export default function SchedulePage() {
+  const [schedules, setSchedules] = useState&lt;Schedule[]&gt;(initialData)
+
+  return (
+    &lt;RehabCalendar
+      staffs={staffs}
+      patients={patients}
+      schedules={schedules}
+      currentStaffId={session.staffId}
+      onScheduleUpdate={(updated) => {
+        setSchedules(prev => prev.map(s => s.id === updated.id ? updated : s))
+        api.patch('/schedules/' + updated.id, updated)  // ReFlowのAPI
+      }}
+      onScheduleCreate={(created) => {
+        setSchedules(prev => [...prev, ...created])
+        api.post('/schedules/bulk', created)
+      }}
+      onScheduleDelete={(id) => {
+        setSchedules(prev => prev.filter(s => s.id !== id))
+        api.delete('/schedules/' + id)
+      }}
+    /&gt;
+  )
+}</code></pre>
+    </section>
+
+    <!-- グリッド仕様 -->
+    <section id="grid">
+      <h2>グリッド仕様</h2>
+
+      <h3>座標計算（lib/grid.ts）</h3>
+      <table>
+        <tr><th>定数</th><th>値</th><th>説明</th></tr>
+        <tr><td><code>GRID_START_HOUR</code></td><td>8</td><td>表示開始時刻</td></tr>
+        <tr><td><code>GRID_END_HOUR</code></td><td>18</td><td>表示終了時刻</td></tr>
+        <tr><td><code>SLOT_MINUTES</code></td><td>20</td><td>1スロットの分数</td></tr>
+        <tr><td><code>SLOT_HEIGHT_PX</code></td><td>40px</td><td>1スロットの高さ</td></tr>
+        <tr><td><code>TOTAL_SLOTS</code></td><td>30</td><td>((18-8)×60)÷20</td></tr>
+        <tr><td><code>TOTAL_HEIGHT_PX</code></td><td>1200px</td><td>30×40px</td></tr>
+      </table>
+
+      <h4>変換関数</h4>
+      <pre><code>timeToTopPx(date: Date): number
+// 例: 09:00 → (60分 / 20分) × 40px = 120px
+
+durationToPx(start: Date, end: Date): number
+// 例: 40分 → (40/20) × 40px = 80px
+
+snapMinutesToSlot(minutes: number): number
+// 20分刻みにスナップ。ドラッグ終了時に使用。</code></pre>
+
+      <h3>ヘッダー構造</h3>
+      <p>ヘッダーは2段構成で <code>sticky</code> 表示される。</p>
+      <table>
+        <tr><th>行</th><th>内容</th><th>z-index</th></tr>
+        <tr><td>1行目</td><td>曜日 + 日付（今日はハイライト）</td><td>20</td></tr>
+        <tr><td>2行目</td><td>スタッフ名 + 職種バッジ（PT/OT/ST）</td><td>20</td></tr>
+      </table>
+
+      <h3>グリッド線</h3>
+      <ul>
+        <li>1時間ごと（3スロットごと）: <code>#d1d5db</code>（濃い線）</li>
+        <li>20分ごと: <code>#f3f4f6</code>（薄い線）</li>
+        <li>曜日境界: 左端に <code>1px solid #d1d5db</code></li>
+      </ul>
+    </section>
+
+    <!-- 実装済み機能 -->
+    <section id="features">
+      <h2>実装済み機能</h2>
+
+      <h3>スタッフ列の表示管理</h3>
+      <ul>
+        <li>初期表示: <code>currentStaffId</code> の列のみ</li>
+        <li>ナビバーの「+ 追加」ドロップダウンから他スタッフを追加可能</li>
+        <li>自分の列（currentStaffId）は削除不可、他スタッフは ×ボタンで非表示</li>
+        <li>表示中スタッフは職種別カラーチップ（PT=青、OT=緑、ST=紫）で表示</li>
+      </ul>
+
+      <h3>週ナビゲーション</h3>
+      <ul>
+        <li>「前週 / 翌週 / 今週」ボタン</li>
+        <li>今日の列は薄い青背景でハイライト</li>
+      </ul>
+
+      <h3>予約ブロック（EventBlock）</h3>
+      <ul>
+        <li>top・height を px 計算して <code>position: absolute</code> で配置</li>
+        <li>職種で色分け（PT=青、OT=緑、ST=紫）</li>
+        <li>高さ 32px 以上の場合のみ時刻（HH:mm–HH:mm）を表示</li>
+        <li>繰り返し予約は右上に黄色ドット表示</li>
+        <li>ドラッグ中はゴースト（破線枠）を元の位置に表示</li>
+      </ul>
+
+      <h3>詳細パネル（DetailPanel）</h3>
+      <ul>
+        <li>予約クリックで右サイドに 288px のパネルをスライドイン</li>
+        <li>表示内容: 患者名・担当療法士・日時・繰り返し有無・所要時間</li>
+        <li>「複数の日付にコピー」ボタンから CopyDatePicker を開く</li>
+      </ul>
+    </section>
+
+    <!-- 繰り返し予約 -->
+    <section id="recurrence">
+      <h2>繰り返し予約</h2>
+
+      <h3>対応フォーマット（lib/recurrence.ts）</h3>
+      <p>iCalendar RRULE の <code>BYDAY</code> 部分のみ解析。Phase 1 では月〜土の曜日固定パターンのみ対応。</p>
+      <pre><code>// 対応例
+"FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA"  // 月〜土
+"FREQ=WEEKLY;BYDAY=MO,WE,FR"            // 月・水・金
+"FREQ=WEEKLY;BYDAY=TU,TH"              // 火・木</code></pre>
+
+      <h3>展開ロジック（expandSchedules）</h3>
+      <p>表示週の月〜土の6日間を走査し、BYDAY に該当する曜日に繰り返しインスタンスを生成。</p>
+      <pre><code>expandSchedules(schedules: Schedule[], weekStart: Date, weekEnd: Date): ScheduleInstance[]
+
+// インスタンスID形式
+// 単発: schedule.id
+// 繰り返し: "sched-1__2026-05-18"</code></pre>
+
+      <div class="alert alert-warning">
+        ドラッグ&amp;ドロップで繰り返し予約を移動すると、<code>onScheduleUpdate</code> に <code>recurrence_rule</code> を含む元の Schedule が渡される（全週に影響する）。「この日だけ変更」ダイアログは未実装。移植先で実装が必要。
+      </div>
+
+      <h3>重複検知（hasConflictOnDate）</h3>
+      <pre><code>hasConflictOnDate(
+  schedules: Schedule[],
+  therapistId: string,
+  excludeScheduleId: string,  // コピー元を除外
+  copyStart: Date,
+  copyEnd: Date,
+): boolean</code></pre>
+      <p>単発・繰り返しの両方に対応。コピー先の日付に同スタッフの時間重複がある場合 <code>true</code> を返す。</p>
+    </section>
+
+    <!-- D&D -->
+    <section id="dnd">
+      <h2>ドラッグ&amp;ドロップ</h2>
+
+      <h3>ライブラリ</h3>
+      <p><code>@dnd-kit/core</code>。PointerSensor を使用、移動距離 4px 以上でドラッグ開始（誤操作防止）。</p>
+
+      <h3>ドロップゾーンID</h3>
+      <p>各セルは <code>col-{dayIdx}-{staffIdx}</code> 形式の ID を持つ。</p>
+      <pre><code>// dayIdx: 0=月 〜 5=土
+// staffIdx: props.staffs 配列での元インデックス（表示非表示に関係なく不変）
+// 例: col-2-0 = 水曜日・staffs[0]の列</code></pre>
+
+      <h3>移動計算</h3>
+      <pre><code>// 垂直方向: ドラッグ距離をスロット単位にスナップ
+deltaMin = Math.round(delta.y / SLOT_HEIGHT_PX) * SLOT_MINUTES
+
+// 範囲クランプ（グリッド外に出ない）
+clampedMin = Math.max(START_HOUR * 60, Math.min(END_HOUR * 60 - duration, rawMin))
+
+// 水平方向: ドロップ先の colId から曜日・スタッフを取得して適用</code></pre>
+
+      <h3>DragLayer（オーバーレイ）</h3>
+      <p>ドラッグ中はカーソルに追従する半透明プレビューを <code>DragOverlay</code> で表示。元の位置にはゴーストを残す。</p>
+    </section>
+
+    <!-- 複数日コピー -->
+    <section id="copy">
+      <h2>複数日コピー（CopyDatePicker）</h2>
+
+      <h3>フロー</h3>
+      <ol>
+        <li>詳細パネルの「複数の日付にコピー」ボタンをクリック</li>
+        <li>ミニカレンダーモーダルが開く</li>
+        <li>コピー先の日付を複数選択（コピー元の日付は選択不可）</li>
+        <li>「コピー」ボタンで確定 → <code>onScheduleCreate</code> 発火</li>
+      </ol>
+
+      <h3>重複表示</h3>
+      <table>
+        <tr><th>状態</th><th>表示</th></tr>
+        <tr><td>コピー元の日付</td><td>グレー・選択不可</td></tr>
+        <tr><td>重複あり・未選択</td><td>オレンジ枠・テキスト</td></tr>
+        <tr><td>重複あり・選択済み</td><td>アンバー塗りつぶし</td></tr>
+        <tr><td>重複なし・選択済み</td><td>スカイブルー塗りつぶし</td></tr>
+      </table>
+      <p>重複がある月はカレンダー下部に凡例を表示。フッターに「N日選択中（うちM件は重複）」を表示。</p>
+
+      <h3>コピー時の処理</h3>
+      <pre><code>// コピー元と同じ時刻・所要時間・スタッフ・患者を引き継ぐ
+// idは "copy-{元schedule_id}-{timestamp}-{index}" で生成
+// recurrence_rule は null（単発として追加）</code></pre>
+    </section>
+
+    <!-- 組み込み手順 -->
+    <section id="integration">
+      <h2>組み込み手順</h2>
+
+      <h3>1. ファイルをコピー</h3>
+      <div class="file-tree">
+<span class="comment"># このリポジトリから</span>
+cp -r components/rehab-calendar/  {移植先}/components/features/schedule/
+cp    lib/grid.ts                  {移植先}/lib/grid.ts
+cp    lib/recurrence.ts            {移植先}/lib/recurrence.ts
+cp    lib/types.ts                 {移植先}/lib/types.ts  <span class="comment"># 既存型と統合する場合は要調整</span>
+      </div>
+
+      <h3>2. 依存パッケージの確認</h3>
+      <pre><code>npm install @dnd-kit/core @dnd-kit/utilities date-fns</code></pre>
+
+      <h3>3. コールバックを API に繋ぐ</h3>
+      <p>上記「接続例」を参照。<code>onScheduleUpdate</code> / <code>onScheduleCreate</code> / <code>onScheduleDelete</code> の3本を移植先の API クライアントに繋ぐ。</p>
+
+      <h3>4. FullCalendar との置き換え</h3>
+      <div class="alert alert-info">
+        FullCalendar のイベントは <code>{ title, start, end, ... }</code> 形式が多い。<code>Schedule</code> 型（<code>patient_id</code>, <code>therapist_id</code>, <code>start_at</code>, <code>end_at</code>）に変換するアダプターが必要になる場合がある。
+      </div>
+
+      <h3>5. 確認ポイント</h3>
+      <ul>
+        <li>移植先の Tailwind バージョン（v3 の場合、一部ユーティリティクラスが異なる）</li>
+        <li><code>@/lib/...</code> のパスエイリアスが移植先でも有効か</li>
+        <li>移植先で <code>dnd-kit</code> の <code>DndContext</code> が重複しないか（既に使っている場合は統合が必要）</li>
+        <li><code>start_at</code> / <code>end_at</code> のタイムゾーン。現在はローカル時刻前提。UTC管理の場合は変換が必要。</li>
+      </ul>
+    </section>
+
+    <!-- 未実装 -->
+    <section id="notimpl">
+      <h2>未実装項目（移植先で追加）</h2>
+      <table>
+        <tr><th>機能</th><th>実装場所の目安</th><th>備考</th></tr>
+        <tr>
+          <td>予約の削除</td>
+          <td><code>DetailPanel.tsx</code> に削除ボタンを追加し <code>onScheduleDelete</code> を呼ぶ</td>
+          <td>繰り返し予約は「この日だけ」「以降全部」の分岐も必要</td>
+        </tr>
+        <tr>
+          <td>予約の新規作成</td>
+          <td><code>CalendarGrid.tsx</code> の空きセルクリックで入力フォームを開く</td>
+          <td>確定時に <code>onScheduleCreate([newSchedule])</code> を呼ぶ</td>
+        </tr>
+        <tr>
+          <td>繰り返し予約のD&amp;D分岐</td>
+          <td><code>RehabCalendar.tsx</code> の <code>handleDragEnd</code> 内</td>
+          <td>「この日だけ変更」→ 元を除外例外として別Scheduleを作成<br>「全部変更」→ 既存のコールバックで対応可</td>
+        </tr>
+        <tr>
+          <td>繰り返しルールの入力UI</td>
+          <td>新規作成フォームまたは詳細パネル内</td>
+          <td><code>recurrence_rule</code> の RRULE 文字列を生成するUIが必要</td>
+        </tr>
+        <tr>
+          <td>ドラッグ時の重複検知</td>
+          <td><code>handleDragEnd</code> 内で <code>hasConflictOnDate</code> を呼ぶ</td>
+          <td>コピー時と同じ関数が使える</td>
+        </tr>
+        <tr>
+          <td>ローディング・エラー状態</td>
+          <td>コールバックを <code>async</code> にして、失敗時に楽観的更新をロールバック</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>時間範囲の設定</td>
+          <td><code>lib/grid.ts</code> の定数を Props 化</td>
+          <td>施設ごとに異なる場合に対応</td>
+        </tr>
+      </table>
+    </section>
+
+    <footer>
+      <p>reflow-calendar — 2026-05-23 時点の実装に基づく仕様書</p>
+    </footer>
+  </main>
+</div>
+</body>
+</html>
