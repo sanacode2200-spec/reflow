@@ -3,7 +3,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { format, isSameDay } from "date-fns";
 import type { Patient, ScheduleInstance, Staff } from "@/lib/types";
-import { SLOT_HEIGHT_PX, TOTAL_HEIGHT_PX, TOTAL_SLOTS, getHourLabels } from "@/lib/grid";
+import { getTotalHeightPx, getTotalSlots, getHourLabels } from "@/lib/grid";
 import EventBlock from "./EventBlock";
 
 const DAY_NAMES_JP = ["月", "火", "水", "木", "金", "土"] as const;
@@ -20,14 +20,15 @@ const OCCUPATION_HEADER: Record<string, string> = {
 type DroppableColumnProps = {
   colId: string;
   children: React.ReactNode;
+  height: number;
 };
 
-function DroppableColumn({ colId, children }: DroppableColumnProps) {
+function DroppableColumn({ colId, children, height }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: colId });
   return (
     <div
       ref={setNodeRef}
-      style={{ width: COL_W, height: TOTAL_HEIGHT_PX, position: "relative", flexShrink: 0 }}
+      style={{ width: COL_W, height, position: "relative", flexShrink: 0 }}
       className={`border-r border-gray-200 transition-colors ${isOver ? "bg-sky-50" : ""}`}
     >
       {children}
@@ -36,14 +37,16 @@ function DroppableColumn({ colId, children }: DroppableColumnProps) {
 }
 
 type Props = {
-  staffs: Staff[]; // 全スタッフ（インデックス維持のため）
-  visibleStaffs: Staff[]; // 表示中スタッフ
+  staffs: Staff[];
+  visibleStaffs: Staff[];
   patients: Patient[];
   instances: ScheduleInstance[];
   weekDays: Date[];
   activeId: string | null;
   patientMap: Map<string, Patient>;
   staffMap: Map<string, Staff>;
+  slotMinutes: number;
+  slotHeightPx: number;
   onEventSelect: (instance: ScheduleInstance) => void;
 };
 
@@ -55,10 +58,14 @@ export default function CalendarGrid({
   activeId,
   patientMap,
   staffMap,
+  slotMinutes,
+  slotHeightPx,
   onEventSelect,
 }: Props) {
-  const hourLabels = getHourLabels();
-  const slotLines = Array.from({ length: TOTAL_SLOTS + 1 }, (_, i) => i);
+  const hourLabels = getHourLabels(slotMinutes, slotHeightPx);
+  const totalSlots = getTotalSlots(slotMinutes);
+  const totalHeightPx = getTotalHeightPx(slotMinutes, slotHeightPx);
+  const slotLines = Array.from({ length: totalSlots + 1 }, (_, i) => i);
 
   return (
     <div className="flex min-w-max flex-col select-none">
@@ -116,7 +123,7 @@ export default function CalendarGrid({
         <div
           style={{
             width: TIME_COL_W,
-            height: TOTAL_HEIGHT_PX,
+            height: totalHeightPx,
             flexShrink: 0,
             position: "relative",
           }}
@@ -136,7 +143,6 @@ export default function CalendarGrid({
         {/* 曜日グループ × スタッフ列 */}
         {weekDays.map((day, dIdx) =>
           visibleStaffs.map((staff) => {
-            // D&D のため全 staffs 配列でのインデックスを使う
             const staffIdx = staffs.findIndex((s) => s.id === staff.id);
             const colId = `col-${dIdx}-${staffIdx}`;
             const colInstances = instances.filter(
@@ -145,7 +151,7 @@ export default function CalendarGrid({
             const isToday = isSameDay(day, new Date());
 
             return (
-              <DroppableColumn key={colId} colId={colId}>
+              <DroppableColumn key={colId} colId={colId} height={totalHeightPx}>
                 {/* 今日の背景 */}
                 {isToday && (
                   <div
@@ -174,10 +180,25 @@ export default function CalendarGrid({
                     key={i}
                     style={{
                       position: "absolute",
-                      top: i * SLOT_HEIGHT_PX,
+                      top: i * slotHeightPx,
                       left: 0,
                       right: 0,
-                      borderTop: i % 3 === 0 ? "1px solid #d1d5db" : "1px solid #f3f4f6",
+                      borderTop:
+                        slotMinutes === 20
+                          ? i % 3 === 0
+                            ? "1px solid #d1d5db"
+                            : "1px solid #f3f4f6"
+                          : slotMinutes === 10
+                            ? i % 6 === 0
+                              ? "1px solid #d1d5db"
+                              : i % 3 === 0
+                                ? "1px solid #e5e7eb"
+                                : "1px solid #f9fafb"
+                            : i % 12 === 0
+                              ? "1px solid #d1d5db"
+                              : i % 6 === 0
+                                ? "1px solid #e5e7eb"
+                                : "1px solid #f9fafb",
                     }}
                   />
                 ))}
@@ -188,6 +209,8 @@ export default function CalendarGrid({
                     instance={inst}
                     patient={patientMap.get(inst.patient_id)}
                     staff={staffMap.get(inst.therapist_id)}
+                    slotMinutes={slotMinutes}
+                    slotHeightPx={slotHeightPx}
                     onClick={onEventSelect}
                   />
                 ))}

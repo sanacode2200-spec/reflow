@@ -1,37 +1,44 @@
 export const GRID_START_HOUR = 8;
 export const GRID_END_HOUR = 18;
-export const SLOT_MINUTES = 20;
-export const SLOT_HEIGHT_PX = 40;
 
-export const TOTAL_SLOTS = ((GRID_END_HOUR - GRID_START_HOUR) * 60) / SLOT_MINUTES;
-export const TOTAL_HEIGHT_PX = TOTAL_SLOTS * SLOT_HEIGHT_PX; // 1200px
+export function getTotalSlots(slotMinutes: number): number {
+  return ((GRID_END_HOUR - GRID_START_HOUR) * 60) / slotMinutes;
+}
 
-export function timeToTopPx(date: Date): number {
+export function getTotalHeightPx(slotMinutes: number, slotHeightPx: number): number {
+  return getTotalSlots(slotMinutes) * slotHeightPx;
+}
+
+export function timeToTopPx(date: Date, slotMinutes: number, slotHeightPx: number): number {
   const minutesFromStart = (date.getHours() - GRID_START_HOUR) * 60 + date.getMinutes();
-  return (minutesFromStart / SLOT_MINUTES) * SLOT_HEIGHT_PX;
+  return (minutesFromStart / slotMinutes) * slotHeightPx;
 }
 
-export function durationToPx(start: Date, end: Date): number {
+export function durationToPx(
+  start: Date,
+  end: Date,
+  slotMinutes: number,
+  slotHeightPx: number
+): number {
   const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-  return (durationMinutes / SLOT_MINUTES) * SLOT_HEIGHT_PX;
+  return (durationMinutes / slotMinutes) * slotHeightPx;
 }
 
-export function getHourLabels(): { label: string; topPx: number }[] {
+export function getHourLabels(
+  slotMinutes: number,
+  slotHeightPx: number
+): { label: string; topPx: number }[] {
   const labels: { label: string; topPx: number }[] = [];
   for (let h = GRID_START_HOUR; h <= GRID_END_HOUR; h++) {
     const minutesFromStart = (h - GRID_START_HOUR) * 60;
     labels.push({
       label: `${String(h).padStart(2, "0")}:00`,
-      topPx: (minutesFromStart / SLOT_MINUTES) * SLOT_HEIGHT_PX,
+      topPx: (minutesFromStart / slotMinutes) * slotHeightPx,
     });
   }
   return labels;
 }
 
-export function getSlotTopPxList(): number[] {
-  return Array.from({ length: TOTAL_SLOTS }, (_, i) => i * SLOT_HEIGHT_PX);
-}
-
-export function snapMinutesToSlot(minutes: number): number {
-  return Math.round(minutes / SLOT_MINUTES) * SLOT_MINUTES;
+export function snapMinutesToSlot(minutes: number, slotMinutes: number): number {
+  return Math.round(minutes / slotMinutes) * slotMinutes;
 }

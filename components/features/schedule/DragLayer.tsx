@@ -15,12 +15,25 @@ type Props = {
   activeInstance: ScheduleInstance | null;
   patient: Patient | undefined;
   staff: Staff | undefined;
+  slotMinutes: number;
+  slotHeightPx: number;
 };
 
-export default function DragLayer({ activeInstance, patient, staff }: Props) {
+export default function DragLayer({
+  activeInstance,
+  patient,
+  staff,
+  slotMinutes,
+  slotHeightPx,
+}: Props) {
   if (!activeInstance) return <DragOverlay>{null}</DragOverlay>;
 
-  const height = durationToPx(activeInstance.start_at, activeInstance.end_at);
+  const height = durationToPx(
+    activeInstance.start_at,
+    activeInstance.end_at,
+    slotMinutes,
+    slotHeightPx
+  );
   const colorCls = OCCUPATION_STYLE[staff?.occupation ?? ""] ?? "bg-gray-400 border-gray-500";
 
   return (
@@ -32,7 +45,7 @@ export default function DragLayer({ activeInstance, patient, staff }: Props) {
         <div className="truncate px-1 pt-0.5 leading-tight font-semibold">
           {patient?.name ?? "—"}
         </div>
-        {height >= 32 && (
+        {height >= 28 && (
           <div className="px-1 text-[10px] leading-tight opacity-80">
             {format(activeInstance.start_at, "HH:mm")}–{format(activeInstance.end_at, "HH:mm")}
           </div>

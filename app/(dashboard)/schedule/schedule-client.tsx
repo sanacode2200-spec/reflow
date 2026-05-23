@@ -41,8 +41,8 @@ export default function ScheduleClient({
   }
 
   return (
-    <div>
-      <div className="mb-3 flex justify-end">
+    <div className="flex h-full flex-col">
+      <div className="mb-3 flex shrink-0 justify-end px-6">
         <button
           onClick={openCreatePanel}
           className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333]"
@@ -51,7 +51,7 @@ export default function ScheduleClient({
         </button>
       </div>
 
-      <div className="hidden md:block">
+      <div className="hidden min-h-0 flex-1 overflow-hidden px-6 pb-4 md:block">
         <CalendarView
           schedules={schedules}
           staffs={staffs}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -11,13 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { addDays, addWeeks, format, startOfWeek, subWeeks } from "date-fns";
 import type { Patient, Schedule, ScheduleInstance, Staff } from "@/lib/types";
-import {
-  GRID_END_HOUR,
-  GRID_START_HOUR,
-  SLOT_HEIGHT_PX,
-  SLOT_MINUTES,
-  snapMinutesToSlot,
-} from "@/lib/grid";
+import { GRID_END_HOUR, GRID_START_HOUR, getTotalSlots, snapMinutesToSlot } from "@/lib/grid";
 import { expandSchedules } from "@/lib/recurrence";
 import CalendarGrid from "./CalendarGrid";
 import CopyDatePicker from "./CopyDatePicker";
@@ -41,6 +35,13 @@ const OCCUPATION_CHIP: Record<string, string> = {
   st: "bg-violet-100 text-violet-700 border-violet-300",
 };
 
+// CalendarGrid 内の sticky ヘッダー2行分の実測高さ（曜日行 + スタッフ名行）
+const GRID_HEADER_PX = 96;
+// 20分スロット数: 8:00〜18:00 = 600分 / 20 = 30
+const TOTAL_SLOTS_20 = getTotalSlots(20);
+
+type SlotMinutes = 20 | 10 | 5;
+
 export default function RehabCalendar({
   staffs,
   patients,
@@ -60,6 +61,27 @@ export default function RehabCalendar({
   const [showCopyPicker, setShowCopyPicker] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
+
+  const [slotMinutes, setSlotMinutes] = useState<SlotMinutes>(20);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [containerH, setContainerH] = useState(700);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(() => setContainerH(el.clientHeight));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // 20分スロット基準の高さ（コンテナにぴったり収まるよう計算、最低18px）
+  const baseSlotHeightPx = Math.max(18, Math.floor((containerH - GRID_HEADER_PX) / TOTAL_SLOTS_20));
+
+  const slotHeightPx = useMemo(() => {
+    if (slotMinutes === 20) return baseSlotHeightPx;
+    if (slotMinutes === 10) return baseSlotHeightPx; // 同じ高さ、スロット数2倍でスクロール
+    return Math.max(12, Math.ceil(baseSlotHeightPx / 2)); // 5分は半分
+  }, [slotMinutes, baseSlotHeightPx]);
 
   const weekDays = useMemo(
     () => Array.from({ length: 6 }, (_, i) => addDays(currentWeekStart, i)),
@@ -148,7 +170,6 @@ export default function RehabCalendar({
       const instance = instances.find((i) => i.id === String(active.id));
       if (!instance) return;
 
-      // col-{dayIdx}-{staffIdx} (staffIdx は staffs 配列の元インデックス)
       const parts = String(over.id).split("-");
       if (parts[0] !== "col" || parts.length !== 3) return;
       const dIdx = parseInt(parts[1] ?? "0", 10);
@@ -160,7 +181,7 @@ export default function RehabCalendar({
 
       const durationMs = instance.end_at.getTime() - instance.start_at.getTime();
       const durationMin = durationMs / 60000;
-      const deltaMin = Math.round(delta.y / SLOT_HEIGHT_PX) * SLOT_MINUTES;
+      const deltaMin = Math.round(delta.y / slotHeightPx) * slotMinutes;
 
       const origMinFromMidnight =
         instance.start_at.getHours() * 60 + instance.start_at.getMinutes();
@@ -169,7 +190,7 @@ export default function RehabCalendar({
         GRID_START_HOUR * 60,
         Math.min(GRID_END_HOUR * 60 - durationMin, rawNewMin)
       );
-      const newStartMin = snapMinutesToSlot(clampedMin);
+      const newStartMin = snapMinutesToSlot(clampedMin, slotMinutes);
 
       const newStartAt = new Date(targetDay);
       newStartAt.setHours(Math.floor(newStartMin / 60), newStartMin % 60, 0, 0);
@@ -190,11 +211,10 @@ export default function RehabCalendar({
       }
       setSelectedInstance(null);
     },
-    [instances, weekDays, staffs]
+    [instances, weekDays, staffs, slotHeightPx, slotMinutes]
   );
 
   const weekLabel = `${format(currentWeekStart, "yyyy年M月d日")} 〜 ${format(weekEnd, "M月d日")}`;
-  const currentStaff = staffMap.get(currentStaffId);
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -223,6 +243,23 @@ export default function RehabCalendar({
           >
             今週
           </button>
+
+          {/* 時間刻み切り替え */}
+          <div className="ml-2 flex overflow-hidden rounded border border-gray-200 text-sm">
+            {([20, 10, 5] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setSlotMinutes(m)}
+                className={`px-2.5 py-1 transition-colors ${
+                  slotMinutes === m
+                    ? "bg-gray-900 text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                {m}分
+              </button>
+            ))}
+          </div>
 
           {/* スタッフ選択エリア */}
           <div className="ml-4 flex flex-wrap items-center gap-1.5">
@@ -295,7 +332,7 @@ export default function RehabCalendar({
 
         {/* ── メインエリア ── */}
         <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-auto">
+          <div ref={scrollRef} className="flex-1 overflow-auto">
             <CalendarGrid
               staffs={staffs}
               visibleStaffs={visibleStaffs}
@@ -305,6 +342,8 @@ export default function RehabCalendar({
               activeId={activeId}
               patientMap={patientMap}
               staffMap={staffMap}
+              slotMinutes={slotMinutes}
+              slotHeightPx={slotHeightPx}
               onEventSelect={setSelectedInstance}
             />
           </div>
@@ -325,6 +364,8 @@ export default function RehabCalendar({
         activeInstance={activeInstance}
         patient={activeInstance ? patientMap.get(activeInstance.patient_id) : undefined}
         staff={activeInstance ? staffMap.get(activeInstance.therapist_id) : undefined}
+        slotMinutes={slotMinutes}
+        slotHeightPx={slotHeightPx}
       />
 
       {showCopyPicker && selectedInstance && (

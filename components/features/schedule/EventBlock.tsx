@@ -16,17 +16,26 @@ type Props = {
   instance: ScheduleInstance;
   patient: Patient | undefined;
   staff: Staff | undefined;
+  slotMinutes: number;
+  slotHeightPx: number;
   onClick: (instance: ScheduleInstance) => void;
 };
 
-export default function EventBlock({ instance, patient, staff, onClick }: Props) {
+export default function EventBlock({
+  instance,
+  patient,
+  staff,
+  slotMinutes,
+  slotHeightPx,
+  onClick,
+}: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: instance.id,
     data: { instance },
   });
 
-  const top = timeToTopPx(instance.start_at);
-  const height = durationToPx(instance.start_at, instance.end_at);
+  const top = timeToTopPx(instance.start_at, slotMinutes, slotHeightPx);
+  const height = durationToPx(instance.start_at, instance.end_at, slotMinutes, slotHeightPx);
   const colorCls =
     OCCUPATION_STYLE[staff?.occupation ?? ""] ?? "bg-gray-400 border-gray-500 text-white";
 
@@ -61,7 +70,7 @@ export default function EventBlock({ instance, patient, staff, onClick }: Props)
       {...attributes}
     >
       <div className="truncate px-1 pt-0.5 leading-tight font-semibold">{patient?.name ?? "—"}</div>
-      {height >= 32 && (
+      {height >= 28 && (
         <div className="px-1 text-[10px] leading-tight opacity-80">
           {format(instance.start_at, "HH:mm")}–{format(instance.end_at, "HH:mm")}
         </div>
