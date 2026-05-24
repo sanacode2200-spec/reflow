@@ -8,7 +8,15 @@ import {
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import Link from "next/link";
-import { Calendar, Users, Zap, AlertTriangle, Clock, ChevronRight } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  Zap,
+  AlertTriangle,
+  Clock,
+  ChevronRight,
+  CheckCircle,
+} from "lucide-react";
 
 // ---- KPIカード ----
 function StatCard({
@@ -83,66 +91,92 @@ function PatientStatCard({
   );
 }
 
-// ---- ステータスバッジ ----
-const STATUS_CONFIG = {
-  scheduled: { label: "予約", bg: "bg-[#fafafa]", text: "text-[#888]", border: "border-[#eaeaea]" },
-  draft: {
-    label: "一時保存",
-    bg: "bg-[#ffedd5]",
-    text: "text-[#ea580c]",
-    border: "border-[#f97316]",
-  },
-  completed: {
-    label: "実施済",
-    bg: "bg-[#f0f7ff]",
-    text: "text-[#0070f3]",
-    border: "border-[#0070f3]",
-  },
-} as const;
-
-function StatusBadge({
-  status,
-  isCancelled,
-}: {
-  status: TodayScheduleRow["session_status"];
-  isCancelled: boolean;
-}) {
-  if (isCancelled) {
-    return (
-      <span className="rounded-full border border-[#d4d4d4] bg-[#f5f5f5] px-2 py-0.5 text-[10px] font-medium text-[#888]">
-        中止
-      </span>
-    );
-  }
-  const cfg = STATUS_CONFIG[status ?? "scheduled"];
-  return (
-    <span
-      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${cfg.bg} ${cfg.text} ${cfg.border}`}
-    >
-      {cfg.label}
-    </span>
-  );
-}
-
 // ---- 今日のスケジュール行 ----
-function ScheduleRow({ s }: { s: TodayScheduleRow }) {
+function ScheduleRow({ s, now }: { s: TodayScheduleRow; now: Date }) {
+  const cancelled = s.is_cancelled;
+  const status = s.session_status;
+  const startAt = new Date(s.start_at);
+  const completed = !cancelled && status === "completed";
+  const draft = !cancelled && status === "draft";
+
+  // 残り時間ラベル（未来のみ・90分以内）
+  const diffMin = Math.round((startAt.getTime() - now.getTime()) / 60000);
+  const upcomingLabel =
+    !completed && !draft && !cancelled && diffMin > 0 && diffMin <= 90
+      ? diffMin < 60
+        ? `${diffMin}分後`
+        : `${Math.round(diffMin / 60)}時間後`
+      : null;
+
   return (
-    <div className="flex items-center gap-3 py-3">
-      <div className="w-16 shrink-0 text-right">
-        <span className="font-mono text-xs text-[#888]">
-          {format(new Date(s.start_at), "HH:mm")}
+    <div
+      className={[
+        "relative flex min-h-[76px] items-center gap-4 px-5",
+        "transition-all duration-[180ms] ease-out",
+        completed
+          ? "bg-blue-500/[0.055] hover:bg-blue-500/[0.09]"
+          : cancelled
+            ? "opacity-[0.42]"
+            : "hover:bg-black/[0.018]",
+      ].join(" ")}
+    >
+      {/* 実施済み: 左2px青ライン */}
+      {completed && (
+        <div className="absolute inset-y-3 left-0 w-[2px] rounded-r-full bg-blue-400" />
+      )}
+
+      {/* 時刻 */}
+      <div className="w-11 shrink-0">
+        <span
+          className={[
+            "block font-mono text-[13px] tabular-nums",
+            cancelled ? "text-[#ccc] line-through" : "font-medium text-[#222]",
+          ].join(" ")}
+        >
+          {format(startAt, "HH:mm")}
         </span>
       </div>
-      <div className="h-4 w-px bg-[#eaeaea]" />
+
+      {/* 患者名 + サブ情報 */}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-[#111]">{s.patient_name}</p>
-        <p className="text-xs text-[#888]">
-          {s.therapist_name}（{s.therapist_occupation.toUpperCase()}）・{s.units}単位
+        <div className="flex items-center gap-1.5">
+          {completed && (
+            <CheckCircle size={11} className="shrink-0 text-blue-400" strokeWidth={2.5} />
+          )}
+          <p
+            className={[
+              "truncate text-[13px] leading-snug",
+              cancelled
+                ? "text-[#bbb] line-through decoration-[#d8d8d8]"
+                : "font-medium text-[#111]",
+            ].join(" ")}
+          >
+            {s.patient_name}
+          </p>
+        </div>
+        <p className="mt-0.5 text-[11px] leading-none text-[#aaa]">
+          {s.therapist_name} · {s.therapist_occupation.toUpperCase()} · {s.units}単位
         </p>
       </div>
-      <div className="shrink-0">
-        <StatusBadge status={s.session_status} isCancelled={s.is_cancelled} />
-      </div>
+
+      {/* 右: ステータスインジケーター */}
+      {!cancelled && (
+        <div className="shrink-0">
+          {draft ? (
+            <span className="flex items-center gap-1.5 text-[11px] text-amber-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              保存中
+            </span>
+          ) : !completed ? (
+            <div className="flex flex-col items-end gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#e4e4e4]" />
+              {upcomingLabel && (
+                <span className="text-[10px] text-[#c0c0c0] tabular-nums">{upcomingLabel}</span>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -281,38 +315,40 @@ export default async function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         {/* 今日のスケジュール */}
         <div className="lg:col-span-2">
-          <div className="rounded-xl border border-[#eaeaea] bg-white">
-            <div className="flex items-center justify-between border-b border-[#eaeaea] px-5 py-4">
+          <div className="rounded-xl border border-[#ebebeb] bg-white">
+            <div className="flex items-center justify-between border-b border-[#f3f3f3] px-5 py-4">
               <div>
-                <h2 className="text-sm font-semibold text-[#111]">今日のスケジュール</h2>
+                <h2 className="text-[13px] font-semibold tracking-tight text-[#111]">
+                  今日のスケジュール
+                </h2>
                 {stats.todayCount > 0 && (
-                  <p className="mt-0.5 text-xs text-[#888]">
-                    {completedToday}/{stats.todayCount} 件実施済み
+                  <p className="mt-0.5 text-[11px] text-[#bbb]">
+                    {completedToday} / {stats.todayCount} 件実施済み
                   </p>
                 )}
               </div>
               <Link
                 href="/schedule"
-                className="flex items-center gap-1 text-xs text-[#0070f3] hover:text-[#0060d1]"
+                className="flex items-center gap-0.5 text-[11px] text-[#aaa] transition-colors hover:text-[#555]"
               >
                 スケジュールへ
-                <ChevronRight size={12} />
+                <ChevronRight size={11} />
               </Link>
             </div>
 
-            <div className="divide-y divide-[#eaeaea] px-5">
+            <div className="divide-y divide-black/[0.04]">
               {todaySchedules.length === 0 ? (
-                <div className="py-10 text-center">
-                  <p className="text-sm text-[#888]">今日の予約はありません</p>
+                <div className="py-12 text-center">
+                  <p className="text-[13px] text-[#ccc]">今日の予約はありません</p>
                   <Link
                     href="/schedule"
-                    className="mt-2 inline-block text-xs text-[#0070f3] hover:underline"
+                    className="mt-2 inline-block text-[11px] text-[#aaa] transition-colors hover:text-[#555]"
                   >
                     予約を追加する
                   </Link>
                 </div>
               ) : (
-                todaySchedules.map((s) => <ScheduleRow key={s.id} s={s} />)
+                todaySchedules.map((s) => <ScheduleRow key={s.id} s={s} now={today} />)
               )}
             </div>
           </div>
