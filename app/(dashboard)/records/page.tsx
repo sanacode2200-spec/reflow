@@ -1,8 +1,48 @@
-export default function RecordsPage() {
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getTenantIdFromUser } from "@/lib/actions/staff";
+import { getSessionRecords } from "@/lib/actions/session";
+import { db } from "@/lib/db";
+import { format, startOfMonth, endOfMonth } from "date-fns";
+import RecordsClient from "@/components/features/session/records-client";
+
+type Props = { searchParams: Promise<{ patient_id?: string; from?: string; to?: string }> };
+
+export default async function RecordsPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const tenantId = await getTenantIdFromUser(user.id);
+
+  const today = new Date();
+  const from = params.from ?? format(startOfMonth(today), "yyyy-MM-dd");
+  const to = params.to ?? format(endOfMonth(today), "yyyy-MM-dd");
+  const patientId = params.patient_id;
+
+  const [records, patientRow] = await Promise.all([
+    getSessionRecords(tenantId, from, to, patientId),
+    patientId
+      ? db.query.patients.findFirst({
+          where: (p, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
+            andFn(eqFn(p.id, patientId), eqFn(p.tenant_id, tenantId), isNullFn(p.deleted_at)),
+          columns: { name_kanji: true },
+        })
+      : Promise.resolve(undefined),
+  ]);
+
   return (
-    <div className="p-6">
-      <h1 className="mb-4 text-xl font-bold text-[#111]">実施記録</h1>
-      <p className="text-sm text-[#888]">実施記録機能は近日実装予定です。</p>
+    <div className="flex h-full flex-col overflow-hidden">
+      <RecordsClient
+        tenantId={tenantId}
+        initialRecords={records}
+        initialFrom={from}
+        initialTo={to}
+        patientName={patientRow?.name_kanji}
+      />
     </div>
   );
 }

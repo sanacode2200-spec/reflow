@@ -1,4 +1,14 @@
-import { pgTable, uuid, integer, boolean, timestamp, text, pgEnum } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  integer,
+  boolean,
+  timestamp,
+  text,
+  date,
+  pgEnum,
+} from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { tenants } from "./tenants";
 import { patients } from "./patients";
 import { staffs } from "./staffs";
@@ -18,13 +28,22 @@ export const sessions = pgTable("sessions", {
   therapist_id: uuid("therapist_id")
     .notNull()
     .references(() => staffs.id),
+  session_date: date("session_date").notNull(),
   status: sessionStatusEnum("status").notNull().default("scheduled"),
   units: integer("units"),
   max_units: integer("max_units").notNull().default(6),
-  soap_note: text("soap_note"),
   is_ambulatory: boolean("is_ambulatory").notNull().default(true),
-  started_at: timestamp("started_at", { withTimezone: true }),
-  ended_at: timestamp("ended_at", { withTimezone: true }),
+  soap_subjective: text("soap_subjective"),
+  soap_objective: text("soap_objective"),
+  soap_assessment: text("soap_assessment"),
+  soap_plan: text("soap_plan"),
+  notes: text("notes"),
+  actual_start_time: text("actual_start_time"),
+  actual_end_time: text("actual_end_time"),
+  additions: text("additions")
+    .array()
+    .notNull()
+    .default(sql`'{}'`),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }),
   deleted_at: timestamp("deleted_at", { withTimezone: true }),

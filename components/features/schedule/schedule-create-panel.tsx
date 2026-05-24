@@ -239,8 +239,9 @@ export default function ScheduleCreatePanel({
     setError(null);
     startTransition(async () => {
       try {
+        let result: { error: string } | void;
         if (isEdit && editSchedule) {
-          await updateSchedule(editSchedule.id, tenantId, {
+          result = await updateSchedule(editSchedule.id, tenantId, {
             startAt: new Date(startStr),
             endAt: new Date(endStr),
             units,
@@ -249,7 +250,7 @@ export default function ScheduleCreatePanel({
             comment: comment || null,
           });
         } else {
-          await createSchedule(tenantId, {
+          result = await createSchedule(tenantId, {
             patient_id: patientId,
             therapist_id: therapistId,
             start_at: new Date(startStr).toISOString(),
@@ -258,6 +259,10 @@ export default function ScheduleCreatePanel({
             comment: comment || undefined,
             extra_dates: [...extraDates],
           });
+        }
+        if (result?.error) {
+          setError(result.error);
+          return;
         }
         onCreated();
         onClose();

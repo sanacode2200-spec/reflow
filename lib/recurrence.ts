@@ -58,7 +58,7 @@ export function expandSchedules(
 
     const allowedDows = parseRRuleByday(schedule.recurrence_rule);
 
-    for (let d = 0; d <= 5; d++) {
+    for (let d = 0; d <= 6; d++) {
       const day = addDays(weekStart, d);
       const dow = day.getDay();
       if (allowedDows.length > 0 && !allowedDows.includes(dow)) continue;

@@ -6,8 +6,7 @@ import { getPatient } from "@/lib/actions/patient";
 import { getStaffs } from "@/lib/actions/schedule";
 import { checkAdditions } from "@/lib/rehab/additions";
 import { differenceInDays, differenceInYears, parseISO } from "date-fns";
-import { CheckCircle, AlertTriangle, ChevronLeft, Pencil } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CheckCircle, AlertTriangle, ChevronLeft, ClipboardList } from "lucide-react";
 import PatientEditModal from "./patient-edit-modal";
 
 const GENDER = { male: "男性", female: "女性", other: "その他" };
@@ -93,7 +92,14 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
         {patient.deleted_at && (
           <span className="rounded bg-red-50 px-2 py-0.5 text-xs text-red-500">アーカイブ済み</span>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Link
+            href={`/records?patient_id=${patient.id}`}
+            className="flex items-center gap-1.5 rounded-lg border border-[#eaeaea] px-3 py-1.5 text-sm text-[#888] transition-colors hover:bg-[#fafafa] hover:text-[#111]"
+          >
+            <ClipboardList size={14} />
+            実施記録
+          </Link>
           <PatientEditModal patient={patient} tenantId={tenantId} staffs={staffList} />
         </div>
       </div>

@@ -48,6 +48,41 @@ function StatCard({
   );
 }
 
+// ---- 外来/入院 分割KPIカード ----
+function PatientStatCard({
+  icon: Icon,
+  outpatient,
+  inpatient,
+}: {
+  icon: React.ElementType;
+  outpatient: number;
+  inpatient: number;
+}) {
+  return (
+    <div className="rounded-xl border border-[#eaeaea] bg-white p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-medium text-[#888]">担当患者</span>
+        <span className="rounded-md bg-[#fafafa] p-1.5 text-[#888]">
+          <Icon size={14} />
+        </span>
+      </div>
+      <div className="flex items-end gap-3">
+        <div>
+          <span className="text-3xl font-bold tracking-tight text-[#111]">{outpatient}</span>
+          <span className="ml-0.5 text-sm text-[#888]">名</span>
+          <p className="mt-0.5 text-[10px] text-[#888]">外来</p>
+        </div>
+        <span className="mb-4 text-lg text-[#d4d4d4]">/</span>
+        <div>
+          <span className="text-3xl font-bold tracking-tight text-[#111]">{inpatient}</span>
+          <span className="ml-0.5 text-sm text-[#888]">名</span>
+          <p className="mt-0.5 text-[10px] text-[#888]">入院</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- ステータスバッジ ----
 const STATUS_CONFIG = {
   scheduled: { label: "予約", bg: "bg-[#fafafa]", text: "text-[#888]", border: "border-[#eaeaea]" },
@@ -65,7 +100,20 @@ const STATUS_CONFIG = {
   },
 } as const;
 
-function StatusBadge({ status }: { status: TodayScheduleRow["session_status"] }) {
+function StatusBadge({
+  status,
+  isCancelled,
+}: {
+  status: TodayScheduleRow["session_status"];
+  isCancelled: boolean;
+}) {
+  if (isCancelled) {
+    return (
+      <span className="rounded-full border border-[#d4d4d4] bg-[#f5f5f5] px-2 py-0.5 text-[10px] font-medium text-[#888]">
+        中止
+      </span>
+    );
+  }
   const cfg = STATUS_CONFIG[status ?? "scheduled"];
   return (
     <span
@@ -93,7 +141,7 @@ function ScheduleRow({ s }: { s: TodayScheduleRow }) {
         </p>
       </div>
       <div className="shrink-0">
-        <StatusBadge status={s.session_status} />
+        <StatusBadge status={s.session_status} isCancelled={s.is_cancelled} />
       </div>
     </div>
   );
@@ -108,7 +156,7 @@ const ALERT_CONFIG = {
 
 // ---- 本日のステータス分布チャート ----
 function StatusChart({ counts, className }: { counts: StatusCounts; className?: string }) {
-  const total = counts.scheduled + counts.draft + counts.completed;
+  const total = counts.scheduled + counts.draft + counts.completed + counts.cancelled;
   const items = [
     {
       key: "scheduled",
@@ -129,6 +177,13 @@ function StatusChart({ counts, className }: { counts: StatusCounts; className?: 
       label: "実施済み",
       count: counts.completed,
       bg: "bg-[#0070f3]",
+      text: "text-white",
+    },
+    {
+      key: "cancelled",
+      label: "中止",
+      count: counts.cancelled,
+      bg: "bg-[#888]",
       text: "text-white",
     },
   ];
@@ -205,8 +260,12 @@ export default async function DashboardPage() {
       {/* KPIカード */}
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="今日の予約" value={stats.todayCount} unit="件" icon={Calendar} />
-        <StatCard label="今週の単位数" value={stats.weeklyUnits} unit="単位" icon={Clock} />
-        <StatCard label="担当患者数" value={stats.activePatients} unit="名" icon={Users} />
+        <StatCard label="今月の単位数" value={stats.monthlyUnits} unit="単位" icon={Clock} />
+        <PatientStatCard
+          icon={Users}
+          outpatient={stats.outpatientCount}
+          inpatient={stats.inpatientCount}
+        />
         <StatCard
           label="要確認アラート"
           value={stats.alertCount}

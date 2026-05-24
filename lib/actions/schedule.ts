@@ -162,7 +162,10 @@ export async function getPatientsForSchedule(
     .orderBy(patients.name_kana);
 }
 
-export async function createSchedule(tenantId: string, input: unknown) {
+export async function createSchedule(
+  tenantId: string,
+  input: unknown
+): Promise<{ error: string } | void> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -173,14 +176,14 @@ export async function createSchedule(tenantId: string, input: unknown) {
   const startAt = new Date(parsed.start_at);
   const endAt = new Date(parsed.end_at);
 
-  if (endAt <= startAt) throw new Error("終了時刻は開始時刻より後にしてください");
+  if (endAt <= startAt) return { error: "終了時刻は開始時刻より後にしてください" };
 
   const therapist = await db.query.staffs.findFirst({
     where: (s, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
       andFn(eqFn(s.id, parsed.therapist_id), eqFn(s.tenant_id, tenantId), isNullFn(s.deleted_at)),
     columns: { max_units_per_day: true, max_units_per_week: true },
   });
-  if (!therapist) throw new Error("療法士が見つかりません");
+  if (!therapist) return { error: "療法士が見つかりません" };
 
   const { max_units_per_day, max_units_per_week } = therapist;
 
@@ -214,7 +217,7 @@ export async function createSchedule(tenantId: string, input: unknown) {
         )
       );
     if (overlaps.length > 0) {
-      throw new Error(`${dateLabel} は同じ療法士の予約と時間が重複しています`);
+      return { error: `${dateLabel} は同じ療法士の予約と時間が重複しています` };
     }
 
     // 時間重複チェック（同一患者）
@@ -231,7 +234,7 @@ export async function createSchedule(tenantId: string, input: unknown) {
         )
       );
     if (patientOverlaps.length > 0) {
-      throw new Error(`${dateLabel} はこの患者に既に予約があります`);
+      return { error: `${dateLabel} はこの患者に既に予約があります` };
     }
 
     const dayStart = startOfDay(occ.start);
@@ -255,9 +258,9 @@ export async function createSchedule(tenantId: string, input: unknown) {
     const therapistDayUnits = therapistDayRows.reduce((s, r) => s + r.units, 0);
     if (therapistDayUnits + parsed.units > max_units_per_day) {
       const d = occ.start.toLocaleDateString("ja", { month: "long", day: "numeric" });
-      throw new Error(
-        `${d} は療法士の1日上限（${max_units_per_day}単位）を超えます（現在 ${therapistDayUnits}単位）`
-      );
+      return {
+        error: `${d} は療法士の1日上限（${max_units_per_day}単位）を超えます（現在 ${therapistDayUnits}単位）`,
+      };
     }
 
     // 療法士 週上限
@@ -276,9 +279,9 @@ export async function createSchedule(tenantId: string, input: unknown) {
     const therapistWeekUnits = therapistWeekRows.reduce((s, r) => s + r.units, 0);
     if (therapistWeekUnits + parsed.units > max_units_per_week) {
       const d = occ.start.toLocaleDateString("ja", { month: "long", day: "numeric" });
-      throw new Error(
-        `${d} の週は療法士の週上限（${max_units_per_week}単位）を超えます（現在 ${therapistWeekUnits}単位）`
-      );
+      return {
+        error: `${d} の週は療法士の週上限（${max_units_per_week}単位）を超えます（現在 ${therapistWeekUnits}単位）`,
+      };
     }
 
     // 患者 1日上限（Phase1: 6単位固定）
@@ -297,9 +300,9 @@ export async function createSchedule(tenantId: string, input: unknown) {
     const patientDayUnits = patientDayRows.reduce((s, r) => s + r.units, 0);
     if (patientDayUnits + parsed.units > PATIENT_MAX_UNITS_PER_DAY) {
       const d = occ.start.toLocaleDateString("ja", { month: "long", day: "numeric" });
-      throw new Error(
-        `${d} は患者の1日上限（${PATIENT_MAX_UNITS_PER_DAY}単位）を超えます（現在 ${patientDayUnits}単位）`
-      );
+      return {
+        error: `${d} は患者の1日上限（${PATIENT_MAX_UNITS_PER_DAY}単位）を超えます（現在 ${patientDayUnits}単位）`,
+      };
     }
   }
 
@@ -390,7 +393,7 @@ export async function moveSchedule(
   startAt: Date,
   endAt: Date,
   units?: number
-) {
+): Promise<{ error: string } | void> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -398,7 +401,7 @@ export async function moveSchedule(
   if (!user) throw new Error("Unauthorized");
 
   if (await checkOverlap(tenantId, therapistId, scheduleId, startAt, endAt))
-    throw new Error("移動先の時間帯に別の予約があります");
+    return { error: "移動先の時間帯に別の予約があります" };
 
   const moving = await db.query.schedules.findFirst({
     where: (s, { eq }) => eq(s.id, scheduleId),
@@ -407,7 +410,7 @@ export async function moveSchedule(
     moving &&
     (await checkPatientOverlap(tenantId, moving.patient_id, scheduleId, startAt, endAt))
   )
-    throw new Error("移動先の時間帯にこの患者の別の予約があります");
+    return { error: "移動先の時間帯にこの患者の別の予約があります" };
 
   const result = await db
     .update(schedules)
@@ -420,7 +423,7 @@ export async function moveSchedule(
     })
     .where(and(eq(schedules.id, scheduleId), eq(schedules.tenant_id, tenantId)))
     .returning({ id: schedules.id });
-  if (result.length === 0) throw new Error("予約が見つかりません");
+  if (result.length === 0) return { error: "予約が見つかりません" };
 
   revalidatePath("/schedule");
 }
@@ -436,7 +439,7 @@ export async function updateSchedule(
     patientId: string;
     comment?: string | null;
   }
-) {
+): Promise<{ error: string } | void> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -444,10 +447,10 @@ export async function updateSchedule(
   if (!user) throw new Error("Unauthorized");
 
   if (await checkOverlap(tenantId, input.therapistId, scheduleId, input.startAt, input.endAt))
-    throw new Error("その時間帯に別の予約があります（療法士）");
+    return { error: "その時間帯に別の予約があります（療法士）" };
 
   if (await checkPatientOverlap(tenantId, input.patientId, scheduleId, input.startAt, input.endAt))
-    throw new Error("その時間帯にこの患者の別の予約があります");
+    return { error: "その時間帯にこの患者の別の予約があります" };
 
   const result = await db
     .update(schedules)
@@ -462,7 +465,7 @@ export async function updateSchedule(
     })
     .where(and(eq(schedules.id, scheduleId), eq(schedules.tenant_id, tenantId)))
     .returning({ id: schedules.id });
-  if (result.length === 0) throw new Error("予約が見つかりません");
+  if (result.length === 0) return { error: "予約が見つかりません" };
 
   revalidatePath("/schedule");
 }

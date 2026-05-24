@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import ScheduleCreatePanel from "@/components/features/schedule/schedule-create-panel";
+import SessionPanel from "@/components/features/session/session-panel";
 import type { ScheduleWithRelations } from "@/lib/actions/schedule";
 import type { Staff } from "@/lib/types";
 
@@ -35,6 +36,7 @@ export default function ScheduleClient({
 }: Props) {
   const router = useRouter();
   const [panelState, setPanelState] = useState<PanelState>(null);
+  const [recordSchedule, setRecordSchedule] = useState<ScheduleWithRelations | null>(null);
 
   const handleRefresh = useCallback(() => router.refresh(), [router]);
 
@@ -71,6 +73,7 @@ export default function ScheduleClient({
           onRefresh={handleRefresh}
           onCreateOpen={(params) => setPanelState({ mode: "create", ...params })}
           onEditOpen={(schedule) => setPanelState({ mode: "edit", schedule })}
+          onRecordOpen={(schedule) => setRecordSchedule(schedule)}
         />
       </div>
 
@@ -96,6 +99,13 @@ export default function ScheduleClient({
           setPanelState(null);
           handleRefresh();
         }}
+      />
+
+      <SessionPanel
+        schedule={recordSchedule}
+        tenantId={tenantId}
+        onClose={() => setRecordSchedule(null)}
+        onSaved={handleRefresh}
       />
     </div>
   );

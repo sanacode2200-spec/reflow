@@ -28,7 +28,7 @@ class NoDndPointerSensor extends PointerSensor {
     },
   ] as typeof PointerSensor.activators;
 }
-import { addDays, addWeeks, format, startOfWeek, subWeeks } from "date-fns";
+import { addDays, addWeeks, endOfDay, format, startOfWeek, subWeeks } from "date-fns";
 import type { Patient, Schedule, ScheduleInstance, Staff } from "@/lib/types";
 import { GRID_END_HOUR, GRID_START_HOUR, getTotalSlots, snapMinutesToSlot } from "@/lib/grid";
 import { expandSchedules } from "@/lib/recurrence";
@@ -49,6 +49,7 @@ export type RehabCalendarProps = {
   onScheduleCancel?: (scheduleId: string, cancel: boolean) => Promise<void>;
   onCreateRequested?: (params: { start: Date; end: Date; therapistId: string }) => void;
   onEditRequested?: (scheduleId: string) => void;
+  onRecordOpen?: (scheduleId: string) => void;
 };
 
 const OCCUPATION_CHIP: Record<string, string> = {
@@ -88,6 +89,7 @@ export default function RehabCalendar({
   onScheduleCancel,
   onCreateRequested,
   onEditRequested,
+  onRecordOpen,
 }: RehabCalendarProps) {
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(initialWeek ?? new Date(), { weekStartsOn: 1 })
@@ -211,8 +213,11 @@ export default function RehabCalendar({
   // eslint-disable-next-line react-hooks/refs, react-hooks/immutability
   schedulesRef.current = schedules;
   const onScheduleUpdateRef = useRef(onScheduleUpdate);
+  const onScheduleCreateRef = useRef(onScheduleCreate);
   // eslint-disable-next-line react-hooks/refs, react-hooks/immutability
   onScheduleUpdateRef.current = onScheduleUpdate;
+  // eslint-disable-next-line react-hooks/refs
+  onScheduleCreateRef.current = onScheduleCreate;
 
   const baseSlotHeightPx = Math.max(18, Math.floor((containerH - GRID_HEADER_PX) / TOTAL_SLOTS_20));
 
@@ -230,10 +235,10 @@ export default function RehabCalendar({
   slotMinutesRef.current = slotMinutes;
 
   const weekDays = useMemo(
-    () => Array.from({ length: 6 }, (_, i) => addDays(currentWeekStart, i)),
+    () => Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i)),
     [currentWeekStart]
   );
-  const weekEnd = useMemo(() => addDays(currentWeekStart, 5), [currentWeekStart]);
+  const weekEnd = useMemo(() => endOfDay(addDays(currentWeekStart, 6)), [currentWeekStart]);
 
   const effectiveSchedules = useMemo(() => {
     if (localUpdates.size === 0) return schedules;
@@ -325,7 +330,7 @@ export default function RehabCalendar({
         };
       });
 
-      onScheduleCreate?.(newSchedules);
+      onScheduleCreateRef.current?.(newSchedules);
       setShowCopyPicker(false);
     },
     [selectedInstance]
@@ -398,7 +403,7 @@ export default function RehabCalendar({
         };
         const originalId = original.id;
         setLocalUpdates((prev) => new Map(prev).set(originalId, updatedSchedule));
-        void onScheduleUpdate?.(updatedSchedule)?.catch((err: unknown) => {
+        void onScheduleUpdateRef.current?.(updatedSchedule)?.catch((err: unknown) => {
           setLocalUpdates((prev) => {
             const next = new Map(prev);
             next.delete(originalId);
@@ -499,6 +504,10 @@ export default function RehabCalendar({
         y,
         items: [
           {
+            label: "記録を入力",
+            onClick: () => onRecordOpen?.(instance.schedule_id),
+          },
+          {
             label: "編集",
             onClick: () => onEditRequested?.(instance.schedule_id),
           },
@@ -531,7 +540,7 @@ export default function RehabCalendar({
         ],
       });
     },
-    [onEditRequested, onScheduleDelete, onScheduleCancel]
+    [onEditRequested, onScheduleDelete, onScheduleCancel, onRecordOpen]
   );
 
   const weekLabel = `${format(currentWeekStart, "yyyy年M月d日")} 〜 ${format(weekEnd, "M月d日")}`;

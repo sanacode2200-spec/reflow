@@ -14,7 +14,8 @@ import {
 } from "@/lib/grid";
 import EventBlock from "./EventBlock";
 
-const DAY_NAMES_JP = ["月", "火", "水", "木", "金", "土"] as const;
+const DAY_NAMES_JP = ["月", "火", "水", "木", "金", "土", "日"] as const;
+const SAT_MIN = 13 * 60;
 
 const TIME_COL_W = 52;
 const COL_W = 88;
@@ -53,6 +54,7 @@ type DroppableColumnProps = {
   dayIdx: number;
   isFirstInDay: boolean;
   activeOccupation: string | null;
+  businessEndMin: number;
   selection: Selection;
   onSelectionStart: (dayIdx: number, staffId: string, startMin: number, columnTop: number) => void;
   onCellContextMenu: (
@@ -76,6 +78,7 @@ function DroppableColumn({
   dayIdx,
   isFirstInDay,
   activeOccupation,
+  businessEndMin,
   selection,
   onSelectionStart,
   onCellContextMenu,
@@ -84,7 +87,7 @@ function DroppableColumn({
   const isInvalidTarget = activeOccupation !== null && staffOccupation !== activeOccupation;
 
   const offTopHeight = ((BUSINESS_START_MIN - GRID_START_HOUR * 60) / slotMinutes) * slotHeightPx;
-  const offBottomTopPx = ((BUSINESS_END_MIN - GRID_START_HOUR * 60) / slotMinutes) * slotHeightPx;
+  const offBottomTopPx = ((businessEndMin - GRID_START_HOUR * 60) / slotMinutes) * slotHeightPx;
 
   const selActive = selection && selection.dayIdx === dayIdx && selection.staffId === staffId;
   const selTopPx = selActive
@@ -308,18 +311,31 @@ export default function CalendarGrid({
         <div style={{ width: TIME_COL_W, flexShrink: 0 }} />
         {weekDays.map((day, dIdx) => {
           const isToday = isSameDay(day, new Date());
+          const dow = day.getDay();
+          const isSun = dow === 0;
+          const isSat = dow === 6;
+          const dayColor = isToday
+            ? "text-sky-600"
+            : isSun
+              ? "text-red-500"
+              : isSat
+                ? "text-blue-500"
+                : "text-gray-700";
+          const dateColor = isToday
+            ? "text-sky-500"
+            : isSun
+              ? "text-red-400"
+              : isSat
+                ? "text-blue-400"
+                : "text-gray-400";
           return (
             <div
               key={dIdx}
               style={{ width: COL_W * visibleStaffs.length, flexShrink: 0 }}
               className={`border-l border-slate-100 py-1.5 text-center ${isToday ? "bg-sky-50" : ""}`}
             >
-              <span className={`text-sm font-bold ${isToday ? "text-sky-600" : "text-gray-700"}`}>
-                {DAY_NAMES_JP[dIdx]}
-              </span>
-              <span className={`ml-1.5 text-xs ${isToday ? "text-sky-500" : "text-gray-400"}`}>
-                {format(day, "M/d")}
-              </span>
+              <span className={`text-sm font-bold ${dayColor}`}>{DAY_NAMES_JP[dIdx]}</span>
+              <span className={`ml-1.5 text-xs ${dateColor}`}>{format(day, "M/d")}</span>
             </div>
           );
         })}
@@ -388,6 +404,9 @@ export default function CalendarGrid({
               (inst) => inst.therapist_id === staff.id && isSameDay(inst.start_at, day)
             );
             const isToday = isSameDay(day, new Date());
+            const dow = day.getDay();
+            const colBusinessEndMin =
+              dow === 0 ? GRID_START_HOUR * 60 : dow === 6 ? SAT_MIN : BUSINESS_END_MIN;
 
             return (
               <DroppableColumn
@@ -403,6 +422,7 @@ export default function CalendarGrid({
                 dayIdx={dIdx}
                 isFirstInDay={staffVisIdx === 0}
                 activeOccupation={activeOccupation}
+                businessEndMin={colBusinessEndMin}
                 selection={selection}
                 onSelectionStart={onSelectionStart}
                 onCellContextMenu={onCellContextMenu}

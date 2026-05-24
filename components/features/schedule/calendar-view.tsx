@@ -23,6 +23,7 @@ type Props = {
   onRefresh: () => void;
   onCreateOpen: (params: { start: Date; end: Date; therapistId: string }) => void;
   onEditOpen: (schedule: ScheduleWithRelations) => void;
+  onRecordOpen: (schedule: ScheduleWithRelations) => void;
 };
 
 export default function CalendarView({
@@ -34,6 +35,7 @@ export default function CalendarView({
   onRefresh,
   onCreateOpen,
   onEditOpen,
+  onRecordOpen,
 }: Props) {
   const rehabSchedules = useMemo<Schedule[]>(
     () =>
@@ -63,7 +65,15 @@ export default function CalendarView({
       const endAt = new Date(schedule.end_at);
       const diffMin = (endAt.getTime() - startAt.getTime()) / 60000;
       const units = calcUnitsFromMinutes(diffMin);
-      await moveSchedule(schedule.id, tenantId, schedule.therapist_id, startAt, endAt, units);
+      const result = await moveSchedule(
+        schedule.id,
+        tenantId,
+        schedule.therapist_id,
+        startAt,
+        endAt,
+        units
+      );
+      if (result?.error) throw new Error(result.error);
       onRefresh();
     },
     [tenantId, onRefresh]
@@ -76,17 +86,14 @@ export default function CalendarView({
         const endAt = new Date(s.end_at);
         const diffMin = (endAt.getTime() - startAt.getTime()) / 60000;
         const units = calcUnitsFromMinutes(diffMin);
-        try {
-          await createSchedule(tenantId, {
-            patient_id: s.patient_id,
-            therapist_id: s.therapist_id,
-            start_at: s.start_at,
-            end_at: s.end_at,
-            units,
-          });
-        } catch (err) {
-          console.error("スケジュール作成エラー:", err);
-        }
+        const result = await createSchedule(tenantId, {
+          patient_id: s.patient_id,
+          therapist_id: s.therapist_id,
+          start_at: s.start_at,
+          end_at: s.end_at,
+          units,
+        });
+        if (result?.error) throw new Error(result.error);
       }
       onRefresh();
     },
@@ -121,6 +128,14 @@ export default function CalendarView({
     [schedules, onEditOpen]
   );
 
+  const handleRecordRequested = useCallback(
+    (scheduleId: string) => {
+      const found = schedules.find((s) => s.id === scheduleId);
+      if (found) onRecordOpen(found);
+    },
+    [schedules, onRecordOpen]
+  );
+
   return (
     <RehabCalendar
       staffs={staffs}
@@ -133,6 +148,7 @@ export default function CalendarView({
       onScheduleCancel={handleScheduleCancel}
       onCreateRequested={onCreateOpen}
       onEditRequested={handleEditRequested}
+      onRecordOpen={handleRecordRequested}
     />
   );
 }
