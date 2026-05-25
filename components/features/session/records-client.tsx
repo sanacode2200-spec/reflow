@@ -170,6 +170,11 @@ export default function RecordsClient({
                         <span>·</span>
                         <span>{record.therapistName}</span>
                         {record.units && <span>· {record.units}単位</span>}
+                        {record.actualStartTime && record.actualEndTime && (
+                          <span className="tabular-nums">
+                            · {record.actualStartTime}〜{record.actualEndTime}
+                          </span>
+                        )}
                       </div>
                       {record.additions.length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-1">

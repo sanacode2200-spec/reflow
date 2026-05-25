@@ -203,7 +203,8 @@ export async function createSchedule(
   for (const occ of occurrences) {
     const dateLabel = occ.start.toLocaleDateString("ja", { month: "long", day: "numeric" });
 
-    // 時間重複チェック（同一療法士）
+    // 時間重複チェック（同一療法士・5分バッファ込み）
+    const GAP_MS = 5 * 60 * 1000;
     const overlaps = await db
       .select({ id: schedules.id })
       .from(schedules)
@@ -212,12 +213,12 @@ export async function createSchedule(
           eq(schedules.tenant_id, tenantId),
           eq(schedules.therapist_id, parsed.therapist_id),
           isNull(schedules.deleted_at),
-          lt(schedules.start_at, occ.end),
-          gt(schedules.end_at, occ.start)
+          lt(schedules.start_at, new Date(occ.end.getTime() + GAP_MS)),
+          gt(schedules.end_at, new Date(occ.start.getTime() - GAP_MS))
         )
       );
     if (overlaps.length > 0) {
-      return { error: `${dateLabel} は同じ療法士の予約と時間が重複しています` };
+      return { error: `${dateLabel} は前後の予約と5分以上の間隔を空けてください` };
     }
 
     // 時間重複チェック（同一患者）
@@ -347,6 +348,7 @@ async function checkOverlap(
   startAt: Date,
   endAt: Date
 ): Promise<boolean> {
+  const GAP_MS = 5 * 60 * 1000;
   const rows = await db
     .select({ id: schedules.id })
     .from(schedules)
@@ -356,8 +358,8 @@ async function checkOverlap(
         eq(schedules.therapist_id, therapistId),
         ne(schedules.id, excludeId),
         isNull(schedules.deleted_at),
-        lt(schedules.start_at, endAt),
-        gt(schedules.end_at, startAt)
+        lt(schedules.start_at, new Date(endAt.getTime() + GAP_MS)),
+        gt(schedules.end_at, new Date(startAt.getTime() - GAP_MS))
       )
     );
   return rows.length > 0;
@@ -401,7 +403,7 @@ export async function moveSchedule(
   if (!user) throw new Error("Unauthorized");
 
   if (await checkOverlap(tenantId, therapistId, scheduleId, startAt, endAt))
-    return { error: "移動先の時間帯に別の予約があります" };
+    return { error: "前後の予約と5分以上の間隔を空けてください" };
 
   const moving = await db.query.schedules.findFirst({
     where: (s, { eq }) => eq(s.id, scheduleId),
@@ -447,7 +449,7 @@ export async function updateSchedule(
   if (!user) throw new Error("Unauthorized");
 
   if (await checkOverlap(tenantId, input.therapistId, scheduleId, input.startAt, input.endAt))
-    return { error: "その時間帯に別の予約があります（療法士）" };
+    return { error: "前後の予約と5分以上の間隔を空けてください" };
 
   if (await checkPatientOverlap(tenantId, input.patientId, scheduleId, input.startAt, input.endAt))
     return { error: "その時間帯にこの患者の別の予約があります" };

@@ -188,71 +188,32 @@ const ALERT_CONFIG = {
   expiry_warning: { color: "text-red-600", bg: "bg-red-50", border: "border-red-200" },
 } as const;
 
-// ---- 本日のステータス分布チャート ----
-function StatusChart({ counts, className }: { counts: StatusCounts; className?: string }) {
-  const total = counts.scheduled + counts.draft + counts.completed + counts.cancelled;
+// ---- 今日の予約 + ステータス内訳カード ----
+function TodayStatCard({ count, counts }: { count: number; counts: StatusCounts }) {
   const items = [
-    {
-      key: "scheduled",
-      label: "予約",
-      count: counts.scheduled,
-      bg: "bg-[#E5E5E5]",
-      text: "text-[#404040]",
-    },
-    {
-      key: "draft",
-      label: "一時保存",
-      count: counts.draft,
-      bg: "bg-[#f97316]",
-      text: "text-white",
-    },
-    {
-      key: "completed",
-      label: "実施済み",
-      count: counts.completed,
-      bg: "bg-[#0070f3]",
-      text: "text-white",
-    },
-    {
-      key: "cancelled",
-      label: "中止",
-      count: counts.cancelled,
-      bg: "bg-[#888]",
-      text: "text-white",
-    },
+    { label: "予約", count: counts.scheduled, dot: "bg-[#d4d4d4]", num: "text-[#555]" },
+    { label: "保存中", count: counts.draft, dot: "bg-orange-400", num: "text-orange-500" },
+    { label: "実施済み", count: counts.completed, dot: "bg-blue-400", num: "text-blue-600" },
+    { label: "中止", count: counts.cancelled, dot: "bg-rose-400", num: "text-rose-500" },
   ];
-
   return (
-    <div className={`rounded-xl border border-[#eaeaea] bg-white p-5 ${className ?? ""}`}>
-      <p className="mb-3 text-xs font-medium text-[#888]">本日の予約ステータス</p>
-
-      {/* セグメントバー */}
-      {total > 0 ? (
-        <div className="mb-4 flex h-3 overflow-hidden rounded-full">
-          {items.map(({ key, count, bg }) =>
-            count > 0 ? (
-              <div
-                key={key}
-                className={`${bg} transition-all`}
-                style={{ width: `${(count / total) * 100}%` }}
-              />
-            ) : null
-          )}
-        </div>
-      ) : (
-        <div className="mb-4 h-3 rounded-full bg-[#F7F7F7]" />
-      )}
-
-      {/* 凡例 + 件数 */}
-      <div className="flex gap-4">
-        {items.map(({ key, label, count, bg, text }) => (
-          <div key={key} className="flex items-center gap-2">
-            <span
-              className={`inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${bg} ${text}`}
-            >
-              {count}
-            </span>
-            <span className="text-xs text-[#888]">{label}</span>
+    <div className="rounded-xl border border-[#eaeaea] bg-white p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-medium text-[#888]">今日の予約</span>
+        <span className="rounded-md bg-[#fafafa] p-1.5 text-[#888]">
+          <Calendar size={14} />
+        </span>
+      </div>
+      <div className="flex items-end gap-1">
+        <span className="text-3xl font-bold tracking-tight text-[#111]">{count}</span>
+        <span className="mb-0.5 text-sm text-[#888]">件</span>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-3 border-t border-[#f5f5f5] pt-3">
+        {items.map(({ label, count: c, dot, num }) => (
+          <div key={label} className="flex items-center gap-1">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+            <span className={`text-xs font-semibold tabular-nums ${num}`}>{c}</span>
+            <span className="text-[10px] text-[#bbb]">{label}</span>
           </div>
         ))}
       </div>
@@ -292,8 +253,8 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPIカード */}
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="今日の予約" value={stats.todayCount} unit="件" icon={Calendar} />
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <TodayStatCard count={stats.todayCount} counts={statusCounts} />
         <StatCard label="今月の単位数" value={stats.monthlyUnits} unit="単位" icon={Clock} />
         <PatientStatCard
           icon={Users}
@@ -309,12 +270,9 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* 本日のステータス分布 */}
-      <StatusChart counts={statusCounts} className="mb-6" />
-
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* 今日のスケジュール */}
-        <div className="lg:col-span-2">
+        <div>
           <div className="rounded-xl border border-[#ebebeb] bg-white">
             <div className="flex items-center justify-between border-b border-[#f3f3f3] px-5 py-4">
               <div>
@@ -376,33 +334,6 @@ export default async function DashboardPage() {
                   他 {alerts.length - 6} 件を見る
                 </Link>
               )}
-            </div>
-          </div>
-
-          {/* クイックリンク */}
-          <div className="rounded-xl border border-[#eaeaea] bg-white">
-            <div className="border-b border-[#eaeaea] px-5 py-4">
-              <h2 className="text-sm font-semibold text-[#111]">クイックリンク</h2>
-            </div>
-            <div className="p-2">
-              {[
-                { href: "/schedule", label: "スケジュール", desc: "予約の確認・作成" },
-                { href: "/patients", label: "患者一覧", desc: "患者情報の管理" },
-                { href: "/records", label: "実施記録", desc: "記録の入力・確認" },
-                { href: "/settings/staffs", label: "スタッフ管理", desc: "スタッフ登録・編集" },
-              ].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-[#fafafa]"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-[#111]">{item.label}</p>
-                    <p className="text-xs text-[#888]">{item.desc}</p>
-                  </div>
-                  <ChevronRight size={14} className="text-[#888]" />
-                </Link>
-              ))}
             </div>
           </div>
         </div>

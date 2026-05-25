@@ -460,36 +460,43 @@ export default function CalendarGrid({
             );
           })
         )}
-        {/* 現在時刻インジケーター */}
-        {nowTopPx !== null && (
-          <>
-            <div
-              style={{
-                position: "absolute",
-                top: nowTopPx - 3,
-                left: TIME_COL_W - 4,
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#ef4444",
-                pointerEvents: "none",
-                zIndex: 25,
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                top: nowTopPx,
-                left: TIME_COL_W,
-                right: 0,
-                height: 2,
-                background: "#ef4444",
-                pointerEvents: "none",
-                zIndex: 25,
-              }}
-            />
-          </>
-        )}
+        {/* 現在時刻インジケーター（今日の列のみ） */}
+        {(() => {
+          if (nowTopPx === null) return null;
+          const todayDayIdx = weekDays.findIndex((d) => isSameDay(d, new Date()));
+          if (todayDayIdx < 0) return null;
+          const todayLeft = TIME_COL_W + todayDayIdx * visibleStaffs.length * COL_W;
+          const todayWidth = visibleStaffs.length * COL_W;
+          return (
+            <>
+              <div
+                style={{
+                  position: "absolute",
+                  top: nowTopPx - 3,
+                  left: todayLeft - 4,
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#7928CA",
+                  pointerEvents: "none",
+                  zIndex: 25,
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  top: nowTopPx,
+                  left: todayLeft,
+                  width: todayWidth,
+                  height: 2,
+                  background: "#7928CA",
+                  pointerEvents: "none",
+                  zIndex: 25,
+                }}
+              />
+            </>
+          );
+        })()}
       </div>
     </div>
   );
