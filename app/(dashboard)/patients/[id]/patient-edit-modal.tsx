@@ -257,7 +257,7 @@ export default function PatientEditModal({
             {alert && (alert.initial || alert.early) && (
               <div className="space-y-1">
                 {alert.initial && (
-                  <div className="flex items-center gap-2 rounded bg-[#f0f7ff] px-3 py-2 text-xs text-[#0070f3]">
+                  <div className="flex items-center gap-2 rounded bg-[rgba(99,102,241,0.10)] px-3 py-2 text-xs text-[#6366f1]">
                     <CheckCircle size={12} />
                     <strong>初期加算対象</strong>
                   </div>

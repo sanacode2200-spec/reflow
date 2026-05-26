@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter, Noto_Sans_JP } from "next/font/google";
+import { Geist, Geist_Mono, Inter, Noto_Sans_JP, Zen_Maru_Gothic } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,6 +25,13 @@ const notoSansJP = Noto_Sans_JP({
   display: "swap",
 });
 
+const zenMaruGothic = Zen_Maru_Gothic({
+  variable: "--font-zen-maru",
+  subsets: ["latin"],
+  weight: ["500", "700"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "ReFlow",
   description: "リハビリ管理システム",
@@ -38,7 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${notoSansJP.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${notoSansJP.variable} ${zenMaruGothic.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

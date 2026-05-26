@@ -19,17 +19,21 @@ export default async function PatientsPage() {
   const [patientList, staffList] = await Promise.all([getPatients(tenantId), getStaffs(tenantId)]);
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#111]">患者一覧</h1>
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="shrink-0 px-6 pt-5 pb-3">
+        <h1 className="text-xl font-bold text-[#1d1f2b]">患者一覧</h1>
+      </div>
+      <div className="mb-3 flex shrink-0 justify-end px-6">
         <Link href="/patients/new">
-          <Button className="flex items-center gap-1.5 bg-black hover:bg-[#111]">
+          <Button className="flex items-center gap-1.5 rounded-full bg-[#6366f1] shadow-[0_8px_18px_rgba(99,102,241,0.3)] hover:bg-[#4f52e0]">
             <Plus size={14} />
-            患者を登録
+            患者登録
           </Button>
         </Link>
       </div>
-      <PatientsClient patients={patientList} tenantId={tenantId} staffs={staffList} />
+      <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
+        <PatientsClient patients={patientList} tenantId={tenantId} staffs={staffList} />
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import ScheduleCreatePanel from "@/components/features/schedule/schedule-create-panel";
 import SessionPanel from "@/components/features/session/session-panel";
+import { Button } from "@/components/ui/button";
 import type { ScheduleWithRelations } from "@/lib/actions/schedule";
 import type { Staff } from "@/lib/types";
 
@@ -55,12 +56,12 @@ export default function ScheduleClient({
   return (
     <div className="flex h-full flex-col">
       <div className="mb-3 flex shrink-0 justify-end px-6">
-        <button
+        <Button
           onClick={openCreatePanel}
-          className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333]"
+          className="flex items-center gap-1.5 rounded-full bg-[#6366f1] shadow-[0_8px_18px_rgba(99,102,241,0.3)] hover:bg-[#4f52e0]"
         >
           新規予約
-        </button>
+        </Button>
       </div>
 
       <div className="hidden min-h-0 flex-1 overflow-hidden px-6 pb-4 md:block">

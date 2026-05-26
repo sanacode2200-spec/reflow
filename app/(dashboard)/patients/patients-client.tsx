@@ -46,7 +46,7 @@ const diseaseCategoryLabel: Record<string, string> = {
 };
 const patientTypeLabel = { inpatient: "入院中", outpatient: "外来" };
 const patientTypeStyle = {
-  inpatient: "bg-[#f0f7ff] text-[#0070f3]",
+  inpatient: "bg-[rgba(99,102,241,0.10)] text-[#6366f1]",
   outpatient: "bg-[#f5f5f5] text-[#888]",
 };
 
@@ -207,7 +207,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
                 e.stopPropagation();
                 await restorePatient(row.original.id, tenantId);
               }}
-              className="rounded p-1.5 text-[#888] hover:bg-[#f5f5f5] hover:text-[#0070f3]"
+              className="rounded p-1.5 text-[#888] hover:bg-[#f5f5f5] hover:text-[#6366f1]"
               title="復帰"
             >
               <RotateCcw size={14} />
@@ -279,7 +279,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
           active ? "font-medium text-[#111]" : "text-[#555]"
         }`}
       >
-        <Check size={12} className={active ? "text-[#0070f3] opacity-100" : "opacity-0"} />
+        <Check size={12} className={active ? "text-[#6366f1] opacity-100" : "opacity-0"} />
         {children}
       </button>
     );
@@ -420,7 +420,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
                       >
                         <span
                           className={`flex items-center gap-1 ${
-                            label ? "text-[#0070f3]" : "text-[#888] hover:text-[#111]"
+                            label ? "text-[#6366f1]" : "text-[#888] hover:text-[#111]"
                           }`}
                         >
                           {flexRender(h.column.columnDef.header, h.getContext())}

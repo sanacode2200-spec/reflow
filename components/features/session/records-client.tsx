@@ -15,7 +15,7 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-[#f5f5f5] text-[#888]",
   draft: "bg-orange-100 text-orange-700",
-  completed: "bg-blue-50 text-blue-700",
+  completed: "bg-green-50 text-green-700",
 };
 
 function buildCopyText(r: SessionRecord): string {
@@ -90,7 +90,7 @@ export default function RecordsClient({
       <div className="mb-4 flex items-center gap-3">
         <h1 className="text-xl font-bold text-[#111]">実施記録</h1>
         {patientName && (
-          <span className="rounded-full bg-[#f0f7ff] px-3 py-0.5 text-sm text-[#0070f3]">
+          <span className="rounded-full bg-[#6366f1]/10 px-3 py-0.5 text-sm text-[#6366f1]">
             {patientName}
           </span>
         )}
@@ -151,7 +151,7 @@ export default function RecordsClient({
                     key={record.id}
                     onClick={() => setSelectedId(isSelected ? null : record.id)}
                     className={`flex w-full items-start gap-3 border-b border-[#eaeaea] px-4 py-3 text-left transition-colors last:border-0 ${
-                      isSelected ? "bg-[#f0f7ff]" : "hover:bg-[#fafafa]"
+                      isSelected ? "bg-[#6366f1]/10" : "hover:bg-[#fafafa]"
                     }`}
                   >
                     <div className="min-w-0 flex-1">
@@ -183,7 +183,7 @@ export default function RecordsClient({
                             return opt ? (
                               <span
                                 key={k}
-                                className="rounded-full bg-[#f0f7ff] px-2 py-0.5 text-[10px] text-[#0070f3]"
+                                className="rounded-full bg-[#6366f1]/10 px-2 py-0.5 text-[10px] text-[#6366f1]"
                               >
                                 {opt.label}
                               </span>

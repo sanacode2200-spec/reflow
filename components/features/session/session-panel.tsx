@@ -24,7 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-[#f5f5f5] text-[#888]",
   draft: "bg-orange-100 text-orange-700",
-  completed: "bg-blue-50 text-blue-700",
+  completed: "bg-green-50 text-green-700",
 };
 
 function timeToMinutes(t: string): number {
@@ -432,7 +432,7 @@ export default function SessionPanel({ schedule, tenantId, onClose, onSaved }: P
                               onClick={() => toggleAddition(key)}
                               className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                                 active
-                                  ? "border-[#0070f3] bg-[#f0f7ff] text-[#0070f3]"
+                                  ? "border-[#6366f1] bg-[#6366f1]/10 text-[#6366f1]"
                                   : "border-[#eaeaea] text-[#888] hover:border-[#ccc] hover:text-[#555]"
                               }`}
                             >

@@ -91,7 +91,9 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
       cell: ({ getValue }) => (
         <span
           className={`rounded px-2 py-0.5 text-xs font-medium ${
-            getValue() === "admin" ? "bg-[#f0f7ff] text-[#0070f3]" : "bg-[#f5f5f5] text-[#888]"
+            getValue() === "admin"
+              ? "bg-[rgba(99,102,241,0.10)] text-[#6366f1]"
+              : "bg-[#f5f5f5] text-[#888]"
           }`}
         >
           {roleLabel[getValue() as string] ?? (getValue() as string)}
@@ -157,16 +159,15 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-[#888]">{staffs.length}名</p>
+      <div className="mb-3 flex items-center justify-end gap-3">
+        <span className="text-sm text-[#8a8fa3]">{staffs.length}名</span>
         {isAdmin && (
           <Button
             onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 bg-black hover:bg-[#111]"
-            size="sm"
+            className="flex items-center gap-1.5 rounded-full bg-[#6366f1] shadow-[0_8px_18px_rgba(99,102,241,0.3)] hover:bg-[#4f52e0]"
           >
             <Plus size={14} />
-            スタッフを追加
+            スタッフ登録
           </Button>
         )}
       </div>

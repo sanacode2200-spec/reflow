@@ -18,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   });
 
   return (
-    <div className="min-h-screen bg-[#fafafa]">
+    <div className="min-h-screen">
       <Sidebar staffName={staff?.name ?? user.email ?? ""} staffCode={staff?.staff_code ?? null} />
       <BottomNav />
       <main className="pb-16 md:pb-0 md:pl-[220px]">{children}</main>

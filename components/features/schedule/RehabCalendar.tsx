@@ -53,9 +53,9 @@ export type RehabCalendarProps = {
 };
 
 const OCCUPATION_CHIP: Record<string, string> = {
-  pt: "bg-sky-100 text-sky-700 border-sky-300",
-  ot: "bg-emerald-100 text-emerald-700 border-emerald-300",
-  st: "bg-violet-100 text-violet-700 border-violet-300",
+  pt: "bg-violet-100 text-violet-700 border-violet-300",
+  ot: "bg-teal-100 text-teal-700 border-teal-300",
+  st: "bg-fuchsia-100 text-fuchsia-600 border-fuchsia-300",
 };
 
 const GRID_HEADER_PX = 96;

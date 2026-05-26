@@ -39,11 +39,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#fafafa]">
-      <div className="w-full max-w-sm rounded-xl border border-[#eaeaea] bg-white p-8 shadow-sm">
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="glass-card w-full max-w-sm p-8">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-[#111]">ReFlow</h1>
-          <p className="mt-1 text-sm text-[#888]">リハビリ管理システム</p>
+          <div
+            className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-2xl text-base font-bold text-white"
+            style={{ background: "linear-gradient(135deg, #6366f1, #ec4899)" }}
+          >
+            R
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1d1f2b]">ReFlow</h1>
+          <p className="mt-1 text-sm text-[#8a8fa3]">リハビリ管理システム</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -81,7 +87,11 @@ export default function LoginPage() {
             </p>
           )}
 
-          <Button type="submit" className="w-full bg-black hover:bg-[#111]" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full rounded-full bg-[#6366f1] hover:bg-[#4f52e0]"
+            disabled={loading}
+          >
             {loading ? "ログイン中..." : "ログイン"}
           </Button>
         </form>

@@ -167,7 +167,7 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
                   i < step
                     ? "bg-[#111] text-white"
                     : i === step
-                      ? "bg-[#0070f3] text-white"
+                      ? "bg-[#6366f1] text-white"
                       : "bg-[#eaeaea] text-[#888]"
                 }`}
               >
@@ -445,7 +445,7 @@ function Step3({
       {additionAlert && (
         <div className="space-y-2">
           {additionAlert.initial && (
-            <div className="flex items-center gap-2 rounded-lg bg-[#f0f7ff] px-3 py-2 text-sm text-[#0070f3]">
+            <div className="flex items-center gap-2 rounded-lg bg-[rgba(99,102,241,0.10)] px-3 py-2 text-sm text-[#6366f1]">
               <CheckCircle size={14} />
               <strong>初期加算対象</strong>（起算日から{14 - additionAlert.initialDaysLeft}日目）
             </div>
@@ -573,7 +573,7 @@ function Step4({
       {additionAlert && (
         <div className="space-y-1.5">
           {additionAlert.initial && (
-            <div className="flex items-center gap-2 rounded-lg bg-[#f0f7ff] px-3 py-2 text-sm text-[#0070f3]">
+            <div className="flex items-center gap-2 rounded-lg bg-[rgba(99,102,241,0.10)] px-3 py-2 text-sm text-[#6366f1]">
               <CheckCircle size={14} />
               <strong>初期加算対象</strong>
             </div>

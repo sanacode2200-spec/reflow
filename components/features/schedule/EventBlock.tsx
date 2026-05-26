@@ -8,9 +8,9 @@ import type { Patient, ScheduleInstance, Staff } from "@/lib/types";
 import { durationToPx, timeToTopPx } from "@/lib/grid";
 
 const OCCUPATION_ACCENT: Record<string, string> = {
-  pt: "#0ea5e9",
-  ot: "#10b981",
-  st: "#8b5cf6",
+  pt: "#8b5cf6",
+  ot: "#14b8a6",
+  st: "#e879f9",
 };
 
 function getStatusStyle(
@@ -23,9 +23,9 @@ function getStatusStyle(
   }
   switch (instance.session_status) {
     case "completed":
-      return { bg: "bg-blue-50", text: "text-blue-800", accent };
+      return { bg: "bg-green-50", text: "text-green-800", accent };
     case "draft":
-      return { bg: "bg-orange-50", text: "text-orange-800", accent: "#f97316" };
+      return { bg: "bg-orange-50", text: "text-orange-800", accent };
     default:
       return { bg: "bg-white", text: "text-slate-700", accent };
   }

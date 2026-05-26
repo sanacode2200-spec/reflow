@@ -37,14 +37,18 @@ export default async function StaffsPage() {
   });
 
   return (
-    <div className="p-6">
-      <h1 className="mb-6 text-xl font-bold text-[#111]">スタッフ管理</h1>
-      <StaffTable
-        staffs={staffList}
-        tenantId={tenantId}
-        currentStaffId={currentStaff?.id ?? null}
-        isAdmin={currentStaff?.role === "admin"}
-      />
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="shrink-0 px-6 pt-5 pb-3">
+        <h1 className="text-xl font-bold text-[#1d1f2b]">スタッフ管理</h1>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
+        <StaffTable
+          staffs={staffList}
+          tenantId={tenantId}
+          currentStaffId={currentStaff?.id ?? null}
+          isAdmin={currentStaff?.role === "admin"}
+        />
+      </div>
     </div>
   );
 }

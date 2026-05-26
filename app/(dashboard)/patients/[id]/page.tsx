@@ -119,7 +119,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
         {additionAlert.initial && (
-          <div className="flex items-center gap-2 rounded-lg bg-[#f0f7ff] px-4 py-3 text-sm text-[#0070f3]">
+          <div className="flex items-center gap-2 rounded-lg bg-[rgba(99,102,241,0.10)] px-4 py-3 text-sm text-[#6366f1]">
             <CheckCircle size={16} />
             <strong>初期加算対象</strong>（起算日から
             {differenceInDays(parseISO(patient.rehab_start_date), parseISO(patient.onset_date))}

@@ -114,7 +114,7 @@ function MultiDatePicker({
                 isBase
                   ? "bg-black text-white"
                   : isExtra
-                    ? "bg-[#0070f3] text-white"
+                    ? "bg-[#6366f1] text-white"
                     : isPast
                       ? "cursor-not-allowed text-[#ccc]"
                       : "text-[#111] hover:bg-[#f5f5f5]",
@@ -132,13 +132,13 @@ function MultiDatePicker({
           {[...extraDates].sort().map((d) => (
             <span
               key={d}
-              className="flex items-center gap-1 rounded-full bg-[#f0f7ff] px-2 py-0.5 text-[10px] text-[#0070f3]"
+              className="flex items-center gap-1 rounded-full bg-[#6366f1]/10 px-2 py-0.5 text-[10px] text-[#6366f1]"
             >
               {format(new Date(d + "T00:00:00"), "M/d")}
               <button
                 type="button"
                 onClick={() => onToggle(d)}
-                className="leading-none text-[#0070f3] hover:text-[#0060d1]"
+                className="leading-none text-[#6366f1] hover:text-[#4f52e0]"
               >
                 ×
               </button>
@@ -448,7 +448,7 @@ export default function ScheduleCreatePanel({
                     <div className="mb-1 flex items-center justify-between">
                       <label className="text-xs font-medium text-[#888]">他の日にもコピー</label>
                       {extraDates.size > 0 && (
-                        <span className="text-[10px] text-[#0070f3]">計 {totalCount} 件作成</span>
+                        <span className="text-[10px] text-[#6366f1]">計 {totalCount} 件作成</span>
                       )}
                     </div>
                     {startStr ? (

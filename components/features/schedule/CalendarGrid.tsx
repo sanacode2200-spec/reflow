@@ -24,9 +24,9 @@ const BUSINESS_START_MIN = 8 * 60 + 30;
 const BUSINESS_END_MIN = 17 * 60;
 
 const OCCUPATION_HEADER: Record<string, string> = {
-  pt: "bg-sky-50 border-sky-200 text-sky-700",
-  ot: "bg-emerald-50 border-emerald-200 text-emerald-700",
-  st: "bg-violet-50 border-violet-200 text-violet-700",
+  pt: "bg-violet-50 border-violet-200 text-violet-700",
+  ot: "bg-teal-50 border-teal-200 text-teal-700",
+  st: "bg-fuchsia-50 border-fuchsia-200 text-fuchsia-600",
 };
 
 type Selection = {
@@ -108,7 +108,7 @@ function DroppableColumn({
         flexShrink: 0,
         borderRight: "1px solid rgba(15,23,42,0.04)",
       }}
-      className={`transition-colors ${isOver && !isInvalidTarget ? "bg-sky-50/60" : ""}`}
+      className={`transition-colors ${isOver && !isInvalidTarget ? "bg-[#6366f1]/[0.06]" : ""}`}
       onMouseDown={(e) => {
         if (e.button !== 0) return;
         if ((e.target as Element).closest("[data-event-block]")) return;
@@ -152,7 +152,7 @@ function DroppableColumn({
       {isToday && (
         <div
           style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-          className="bg-sky-50/30"
+          className="bg-[#6366f1]/[0.04]"
         />
       )}
       {/* 日境界線 */}
@@ -315,24 +315,24 @@ export default function CalendarGrid({
           const isSun = dow === 0;
           const isSat = dow === 6;
           const dayColor = isToday
-            ? "text-sky-600"
+            ? "text-[#6366f1]"
             : isSun
               ? "text-red-500"
               : isSat
-                ? "text-blue-500"
+                ? "text-violet-500"
                 : "text-gray-700";
           const dateColor = isToday
-            ? "text-sky-500"
+            ? "text-[#6366f1]"
             : isSun
               ? "text-red-400"
               : isSat
-                ? "text-blue-400"
+                ? "text-violet-400"
                 : "text-gray-400";
           return (
             <div
               key={dIdx}
               style={{ width: COL_W * visibleStaffs.length, flexShrink: 0 }}
-              className={`border-l border-slate-100 py-1.5 text-center ${isToday ? "bg-sky-50" : ""}`}
+              className={`border-l border-slate-100 py-1.5 text-center ${isToday ? "bg-[#6366f1]/[0.05]" : ""}`}
             >
               <span className={`text-sm font-bold ${dayColor}`}>{DAY_NAMES_JP[dIdx]}</span>
               <span className={`ml-1.5 text-xs ${dateColor}`}>{format(day, "M/d")}</span>
@@ -353,7 +353,7 @@ export default function CalendarGrid({
               <div
                 key={`${dIdx}-${staff.id}`}
                 style={{ width: COL_W, flexShrink: 0 }}
-                className={`border-l border-slate-100 py-1 text-center ${isToday ? "bg-sky-50/60" : ""}`}
+                className={`border-l border-slate-100 py-1 text-center ${isToday ? "bg-[#6366f1]/[0.04]" : ""}`}
               >
                 <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${headerCls}`}>
                   {staff.occupation.toUpperCase()}
