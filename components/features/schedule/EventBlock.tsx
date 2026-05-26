@@ -193,6 +193,10 @@ export default function EventBlock({
             }}
             className="bg-white/20 hover:bg-white/40"
             onMouseDown={handleResizeMouseDown}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
           />
         )}
       </div>

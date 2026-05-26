@@ -31,6 +31,7 @@ class NoDndPointerSensor extends PointerSensor {
 import { addDays, addWeeks, endOfDay, format, startOfWeek, subWeeks } from "date-fns";
 import type { Patient, Schedule, ScheduleInstance, Staff } from "@/lib/types";
 import { GRID_END_HOUR, GRID_START_HOUR, getTotalSlots, snapMinutesToSlot } from "@/lib/grid";
+import { calcUnitsFromMinutes } from "@/lib/rehab/calculator";
 import { expandSchedules } from "@/lib/recurrence";
 import CalendarGrid from "./CalendarGrid";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
@@ -120,6 +121,7 @@ export default function RehabCalendar({
     currentEndMin: number;
     minEndMin: number;
   } | null>(null);
+  const suppressNextEventClickRef = useRef(false);
 
   // コンテキストメニュー
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
@@ -189,12 +191,25 @@ export default function RehabCalendar({
         if (original && onScheduleUpdateRef.current) {
           const endAt = new Date(instance.start_at);
           endAt.setHours(Math.floor(currentEndMin / 60), currentEndMin % 60, 0, 0);
-          void onScheduleUpdateRef
-            .current({ ...original, end_at: fmtLocal(endAt) })
-            ?.catch((err: unknown) => {
-              setMoveError(err instanceof Error ? err.message : "予約の変更に失敗しました");
+          const durationMin = (endAt.getTime() - instance.start_at.getTime()) / 60000;
+          const updatedSchedule = {
+            ...original,
+            end_at: fmtLocal(endAt),
+            units: calcUnitsFromMinutes(durationMin),
+          };
+          setLocalUpdates((prev) => new Map(prev).set(original.id, updatedSchedule));
+          void onScheduleUpdateRef.current(updatedSchedule)?.catch((err: unknown) => {
+            setLocalUpdates((prev) => {
+              const next = new Map(prev);
+              next.delete(original.id);
+              return next;
             });
+            setMoveError(err instanceof Error ? err.message : "予約の変更に失敗しました");
+          });
         }
+        setTimeout(() => {
+          suppressNextEventClickRef.current = false;
+        }, 0);
       }
     };
     window.addEventListener("mousemove", handleMouseMove);
@@ -442,6 +457,7 @@ export default function RehabCalendar({
       setSelection(null);
       selectionRef.current = null;
       isSelectingRef.current = false;
+      suppressNextEventClickRef.current = true;
 
       const startMin = instance.start_at.getHours() * 60 + instance.start_at.getMinutes();
       const endMin = instance.end_at.getHours() * 60 + instance.end_at.getMinutes();
@@ -541,6 +557,17 @@ export default function RehabCalendar({
       });
     },
     [onEditRequested, onScheduleDelete, onScheduleCancel, onRecordOpen]
+  );
+
+  const handleEventSelect = useCallback(
+    (instance: ScheduleInstance) => {
+      if (suppressNextEventClickRef.current) {
+        suppressNextEventClickRef.current = false;
+        return;
+      }
+      onEditRequested?.(instance.schedule_id);
+    },
+    [onEditRequested]
   );
 
   const weekLabel = `${format(currentWeekStart, "yyyy年M月d日")} 〜 ${format(weekEnd, "M月d日")}`;
@@ -703,7 +730,7 @@ export default function RehabCalendar({
               activeOccupation={activeOccupation}
               selection={selection}
               resizing={resizing}
-              onEventSelect={(inst) => onEditRequested?.(inst.schedule_id)}
+              onEventSelect={handleEventSelect}
               onEventContextMenu={handleEventContextMenu}
               onSelectionStart={handleSelectionStart}
               onCellContextMenu={handleCellContextMenu}

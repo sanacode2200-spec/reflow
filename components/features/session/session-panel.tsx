@@ -311,7 +311,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed top-0 right-0 z-50 flex h-full w-full max-w-[860px] flex-col"
+            className="fixed top-0 right-0 z-50 flex h-full w-full max-w-[1280px] flex-col"
             style={{
               background:
                 "linear-gradient(160deg, rgba(247,243,238,0.99) 0%, rgba(241,236,255,0.99) 45%, rgba(236,243,255,0.99) 100%)",
@@ -381,12 +381,9 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                 <p className="text-sm text-red-600">{fetchError}</p>
               </div>
             ) : (
-              <div
-                className="min-h-0 flex-1 overflow-hidden p-5"
-                style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}
-              >
+              <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)] lg:overflow-hidden">
                 {/* ── 左カラム（入力フォーム） ── */}
-                <div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
+                <div className="flex min-h-0 flex-col gap-3 lg:overflow-y-auto">
                   {/* 予約情報カード */}
                   {data && (
                     <div
@@ -434,27 +431,24 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
 
                   {/* 実施時刻・単位数・離床 */}
                   <div
-                    className="shrink-0 rounded-3xl p-5"
+                    className="grid shrink-0 grid-cols-1 gap-4 rounded-3xl p-5 sm:grid-cols-[minmax(280px,1fr)_minmax(150px,auto)] xl:grid-cols-[minmax(280px,1fr)_minmax(150px,auto)_minmax(220px,auto)]"
                     style={{
                       background: "rgba(255,255,255,0.78)",
                       boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
                       backdropFilter: "blur(10px)",
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr 1fr",
-                      gap: 20,
                     }}
                   >
                     {/* 実施時刻 */}
-                    <div className="flex flex-col gap-2">
+                    <div className="flex min-w-0 flex-col gap-2">
                       <label
                         className="text-xs font-semibold"
                         style={{ color: D.ink3, letterSpacing: "0.02em" }}
                       >
                         実施時刻
                       </label>
-                      <div className="flex flex-wrap items-center gap-1.5">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
                         <div
-                          className="rounded-xl px-3 py-2"
+                          className="min-w-0 rounded-xl px-3 py-2"
                           style={{ background: "rgba(20,24,60,0.04)" }}
                         >
                           <input
@@ -464,7 +458,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                               setStartTime(e.target.value);
                               recalcUnits(e.target.value, endTime);
                             }}
-                            className="bg-transparent text-sm font-bold focus:outline-none"
+                            className="w-full bg-transparent text-sm font-bold focus:outline-none"
                             style={{
                               fontFamily: "var(--font-geist-mono, monospace)",
                               color: D.ink,
@@ -473,7 +467,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                         </div>
                         <span style={{ color: D.ink3, fontSize: 14 }}>〜</span>
                         <div
-                          className="rounded-xl px-3 py-2"
+                          className="min-w-0 rounded-xl px-3 py-2"
                           style={{ background: "rgba(20,24,60,0.04)" }}
                         >
                           <input
@@ -483,7 +477,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                               setEndTime(e.target.value);
                               recalcUnits(startTime, e.target.value);
                             }}
-                            className="bg-transparent text-sm font-bold focus:outline-none"
+                            className="w-full bg-transparent text-sm font-bold focus:outline-none"
                             style={{
                               fontFamily: "var(--font-geist-mono, monospace)",
                               color: D.ink,
@@ -494,14 +488,14 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                     </div>
 
                     {/* 単位数 */}
-                    <div className="flex flex-col gap-2">
+                    <div className="flex min-w-0 flex-col gap-2">
                       <label
                         className="text-xs font-semibold"
                         style={{ color: D.ink3, letterSpacing: "0.02em" }}
                       >
                         単位数
                       </label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
                         <div
                           className="flex items-center rounded-xl"
                           style={{ background: "rgba(20,24,60,0.04)" }}
@@ -539,7 +533,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                     </div>
 
                     {/* 離床 */}
-                    <div className="flex flex-col gap-2">
+                    <div className="flex min-w-0 flex-col gap-2 sm:col-span-2 xl:col-span-1">
                       <label
                         className="text-xs font-semibold"
                         style={{ color: D.ink3, letterSpacing: "0.02em" }}
@@ -547,7 +541,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                         離床
                       </label>
                       <div
-                        className="inline-flex gap-1 rounded-full p-1"
+                        className="grid w-full grid-cols-2 gap-1 rounded-xl p-1"
                         style={{ background: "rgba(20,24,60,0.05)" }}
                       >
                         {(["あり", "なし（減算）"] as const).map((label) => {
@@ -558,7 +552,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                               key={label}
                               type="button"
                               onClick={() => setIsAmbulatory(val)}
-                              className="rounded-full px-3 py-1.5 text-xs font-semibold transition-all"
+                              className="min-w-0 rounded-lg px-3 py-2 text-xs font-semibold transition-all"
                               style={
                                 active
                                   ? {

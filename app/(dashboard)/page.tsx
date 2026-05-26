@@ -37,14 +37,14 @@ function StatCard({
   iconBg?: string;
 }) {
   return (
-    <div className={`glass-card p-5 ${accent ? "ring-1 ring-red-200" : ""}`}>
+    <div className={`glass-card p-5 ${accent ? "ring-1 ring-[#fecdd3]/70" : ""}`}>
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xs font-medium text-[#8a8fa3]">{label}</span>
         <span
           className="rounded-xl p-1.5"
           style={
             accent
-              ? { background: "rgba(239,68,68,0.10)", color: "#ef4444" }
+              ? { background: "rgba(248,113,113,0.10)", color: "#f87171" }
               : { background: iconBg, color: iconColor }
           }
         >
@@ -53,7 +53,7 @@ function StatCard({
       </div>
       <div className="flex items-end gap-1">
         <span
-          className={`text-3xl font-bold tracking-tight ${accent && value > 0 ? "text-red-500" : "text-[#1d1f2b]"}`}
+          className={`text-3xl font-bold tracking-tight ${accent && value > 0 ? "text-[#f87171]" : "text-[#1d1f2b]"}`}
         >
           {value}
         </span>
@@ -194,12 +194,20 @@ function ScheduleRow({ s, now }: { s: TodayScheduleRow; now: Date }) {
 // ---- アラートバッジ ----
 const ALERT_CONFIG = {
   initial_addition: {
-    color: "text-[#6366f1]",
-    bg: "bg-[#6366f1]/8",
-    border: "border-[#6366f1]/20",
+    color: "text-[#e87979]",
+    bg: "bg-[#fff5f5]",
+    border: "border-[#ffd6d6]",
   },
-  early_addition: { color: "text-[#6366f1]", bg: "bg-[#6366f1]/8", border: "border-[#6366f1]/20" },
-  expiry_warning: { color: "text-red-600", bg: "bg-red-50", border: "border-red-200" },
+  early_addition: {
+    color: "text-[#e87979]",
+    bg: "bg-[#fff5f5]",
+    border: "border-[#ffd6d6]",
+  },
+  expiry_warning: {
+    color: "text-[#e87979]",
+    bg: "bg-[#fff5f5]",
+    border: "border-[#ffd6d6]",
+  },
 } as const;
 
 // ---- 今日の予約 + ステータス内訳カード ----
