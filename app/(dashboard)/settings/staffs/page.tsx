@@ -38,8 +38,9 @@ export default async function StaffsPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="shrink-0 px-6 pt-5 pb-3">
-        <h1 className="text-xl font-bold text-[#1d1f2b]">スタッフ管理</h1>
+      <div className="shrink-0 px-6 pt-6 pb-4">
+        <h1 className="text-2xl font-bold tracking-tight text-[#1d1f2b]">スタッフ管理</h1>
+        <p className="mt-1 text-sm text-[#8a8fa3]">登録 {staffList.length} 名</p>
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
         <StaffTable

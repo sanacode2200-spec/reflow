@@ -95,7 +95,8 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
         <div className="ml-auto flex items-center gap-2">
           <Link
             href={`/records?patient_id=${patient.id}`}
-            className="flex items-center gap-1.5 rounded-lg border border-[#eaeaea] px-3 py-1.5 text-sm text-[#888] transition-colors hover:bg-[#fafafa] hover:text-[#111]"
+            className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-[#5a5e72] transition-colors hover:opacity-80"
+            style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(20,24,60,0.06)" }}
           >
             <ClipboardList size={14} />
             実施記録
@@ -137,13 +138,15 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
       {/* 詳細カード */}
       <div className="grid gap-4 md:grid-cols-2">
         {sections.map((section) => (
-          <div key={section.title} className="rounded-xl border border-[#eaeaea] bg-white p-5">
-            <h2 className="mb-3 text-sm font-semibold text-[#888]">{section.title}</h2>
-            <dl className="space-y-2">
+          <div key={section.title} className="glass-card p-5">
+            <h2 className="mb-3 text-xs font-semibold tracking-wide text-[#8a8fa3]">
+              {section.title}
+            </h2>
+            <dl className="space-y-2.5">
               {section.rows.map(([label, value]) => (
                 <div key={label} className="flex text-sm">
-                  <dt className="w-32 shrink-0 text-[#888]">{label}</dt>
-                  <dd className="font-medium text-[#111]">{value}</dd>
+                  <dt className="w-32 shrink-0 text-[#8a8fa3]">{label}</dt>
+                  <dd className="font-medium text-[#1d1f2b]">{value}</dd>
                 </div>
               ))}
             </dl>

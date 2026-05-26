@@ -2,45 +2,32 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, Check, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { getSessionRecords, type SessionRecord } from "@/lib/actions/session";
 import { ADDITION_OPTIONS } from "@/lib/constants/session";
+import { Search, Filter } from "lucide-react";
+import SessionPanel from "./session-panel";
 
 const STATUS_LABEL: Record<string, string> = {
   scheduled: "未記録",
   draft: "一時保存",
   completed: "実施済み",
 };
-const STATUS_STYLE: Record<string, string> = {
-  scheduled: "bg-[#f5f5f5] text-[#888]",
-  draft: "bg-orange-100 text-orange-700",
-  completed: "bg-green-50 text-green-700",
+
+const STATUS_COLOR: Record<string, { bg: string; fg: string; dot: string }> = {
+  scheduled: { bg: "rgba(20,24,60,0.06)", fg: "#5a5e72", dot: "#8a8fa3" },
+  draft: { bg: "rgba(245,158,11,0.14)", fg: "#b45309", dot: "#f59e0b" },
+  completed: { bg: "rgba(34,197,94,0.12)", fg: "#15803d", dot: "#22c55e" },
 };
 
-function buildCopyText(r: SessionRecord): string {
-  const additionLabels = r.additions
-    .map((k) => ADDITION_OPTIONS.find((o) => o.key === k)?.label)
-    .filter(Boolean)
-    .join("・");
-
-  const lines: string[] = [
-    `【実施記録】`,
-    `患者: ${r.patientName}`,
-    `実施日: ${format(new Date(r.sessionDate + "T00:00:00"), "yyyy年M月d日")}`,
-    `担当療法士: ${r.therapistName}`,
-    `実施時刻: ${r.actualStartTime ?? ""}〜${r.actualEndTime ?? ""}（${r.units ?? "?"}単位）`,
-    `離床: ${r.isAmbulatory ? "あり" : "なし（減算）"}`,
-    ...(additionLabels ? [`算定加算: ${additionLabels}`] : []),
-    "",
-  ];
-  if (r.soapSubjective?.trim()) lines.push(`S（主観）:\n${r.soapSubjective.trim()}`, "");
-  if (r.soapObjective?.trim()) lines.push(`O（客観）:\n${r.soapObjective.trim()}`, "");
-  if (r.soapAssessment?.trim()) lines.push(`A（評価）:\n${r.soapAssessment.trim()}`, "");
-  if (r.soapPlan?.trim()) lines.push(`P（計画）:\n${r.soapPlan.trim()}`, "");
-
-  return lines.join("\n").trimEnd();
-}
+const D = {
+  ink: "#1d1f2b",
+  ink2: "#5a5e72",
+  ink3: "#8a8fa3",
+  accent: "#6366f1",
+  accentSoft: "rgba(99,102,241,0.12)",
+  divider: "rgba(20,24,60,0.06)",
+};
 
 type Props = {
   tenantId: string;
@@ -64,183 +51,300 @@ export default function RecordsClient({
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
   const [records, setRecords] = useState<SessionRecord[]>(initialRecords);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [panelScheduleId, setPanelScheduleId] = useState<string | null>(null);
+  const [panelSessionId, setPanelSessionId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [search, setSearch] = useState("");
 
   const handleSearch = () => {
     startTransition(async () => {
       const result = await getSessionRecords(tenantId, from, to, patientId);
       setRecords(result);
-      setSelectedId(null);
     });
   };
 
-  const handleCopy = async (record: SessionRecord) => {
-    await navigator.clipboard.writeText(buildCopyText(record));
-    setCopiedId(record.id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleRowClick = (record: SessionRecord) => {
+    if (!record.scheduleId) return;
+    setPanelScheduleId(record.scheduleId);
+    setPanelSessionId(record.id);
   };
 
-  const selectedRecord = records.find((r) => r.id === selectedId) ?? null;
+  const handlePanelClose = () => {
+    setPanelScheduleId(null);
+    setPanelSessionId(null);
+  };
+
+  const handlePanelSaved = () => {
+    startTransition(async () => {
+      const result = await getSessionRecords(tenantId, from, to, patientId);
+      setRecords(result);
+    });
+  };
+
+  const filtered = search
+    ? records.filter((r) => r.patientName.includes(search) || r.therapistName.includes(search))
+    : records;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden p-6">
-      {/* ヘッダー */}
-      <div className="mb-4 flex items-center gap-3">
-        <h1 className="text-xl font-bold text-[#111]">実施記録</h1>
-        {patientName && (
-          <span className="rounded-full bg-[#6366f1]/10 px-3 py-0.5 text-sm text-[#6366f1]">
-            {patientName}
-          </span>
-        )}
-      </div>
+    <>
+      <div className="flex h-full flex-col p-6">
+        {/* ヘッダー */}
+        <div className="mb-5 flex shrink-0 items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: D.ink }}>
+              実施記録
+            </h1>
+            {patientName && (
+              <span
+                className="mt-1 inline-block rounded-full px-3 py-0.5 text-sm"
+                style={{ background: D.accentSoft, color: D.accent }}
+              >
+                {patientName}
+              </span>
+            )}
+          </div>
+          {patientId && (
+            <button
+              onClick={() => router.push("/records")}
+              className="rounded-full px-4 py-2 text-sm font-semibold transition-colors hover:opacity-80"
+              style={{
+                background: "rgba(255,255,255,0.7)",
+                border: `1px solid ${D.divider}`,
+                color: D.ink2,
+              }}
+            >
+              全患者を表示
+            </button>
+          )}
+        </div>
 
-      {/* フィルター */}
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <div>
-          <label className="mb-1 block text-xs text-[#888]">開始日</label>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="rounded-lg border border-[#eaeaea] px-3 py-2 text-sm focus:border-[#111] focus:outline-none"
-          />
-        </div>
-        <span className="mb-2 text-[#888]">〜</span>
-        <div>
-          <label className="mb-1 block text-xs text-[#888]">終了日</label>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="rounded-lg border border-[#eaeaea] px-3 py-2 text-sm focus:border-[#111] focus:outline-none"
-          />
-        </div>
-        <button
-          onClick={handleSearch}
-          disabled={isPending}
-          className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333] disabled:opacity-50"
+        {/* フィルターバー */}
+        <div
+          className="mb-4 flex shrink-0 flex-wrap items-center gap-3 rounded-3xl px-4 py-3"
+          style={{
+            background: "rgba(255,255,255,0.78)",
+            boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+            backdropFilter: "blur(10px)",
+          }}
         >
-          {isPending ? "検索中..." : "検索"}
-        </button>
-        {patientId && (
-          <button
-            onClick={() => router.push("/records")}
-            className="rounded-lg border border-[#eaeaea] px-4 py-2 text-sm text-[#888] transition-colors hover:bg-[#fafafa]"
-          >
-            全患者を表示
-          </button>
-        )}
-      </div>
+          {/* 検索 */}
+          <div className="relative min-w-[180px] flex-1">
+            <Search
+              size={14}
+              className="absolute top-1/2 left-3 -translate-y-1/2"
+              style={{ color: D.ink3 }}
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="患者名・担当者で絞り込み"
+              className="w-full rounded-full bg-transparent py-1.5 pr-3 pl-8 text-sm focus:outline-none"
+              style={{ color: D.ink }}
+            />
+          </div>
 
-      {/* 2カラムレイアウト */}
-      <div className="flex min-h-0 flex-1 gap-4">
-        {/* 左：一覧 */}
-        <div className="flex w-96 shrink-0 flex-col overflow-hidden rounded-xl border border-[#eaeaea] bg-white">
-          {records.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center text-sm text-[#888]">
-              {isPending ? "読み込み中..." : "記録がありません"}
+          <div className="h-5 w-px" style={{ background: D.divider }} />
+
+          {/* 日付レンジ */}
+          <div className="flex items-center gap-2">
+            <Filter size={13} style={{ color: D.ink3 }} />
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="rounded-xl border-none bg-transparent px-2 py-1 text-sm focus:outline-none"
+              style={{ color: D.ink }}
+            />
+            <span style={{ color: D.ink3, fontSize: 13 }}>〜</span>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="rounded-xl border-none bg-transparent px-2 py-1 text-sm focus:outline-none"
+              style={{ color: D.ink }}
+            />
+          </div>
+
+          <button
+            onClick={handleSearch}
+            disabled={isPending}
+            className="rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50"
+            style={{
+              background: D.accent,
+              color: "#fff",
+              boxShadow: "0 6px 14px rgba(99,102,241,0.25)",
+            }}
+          >
+            {isPending ? "検索中..." : "検索"}
+          </button>
+
+          <span className="text-sm" style={{ color: D.ink3 }}>
+            {filtered.length}件
+          </span>
+        </div>
+
+        {/* レコードリスト */}
+        <div
+          className="flex-1 overflow-hidden rounded-3xl"
+          style={{
+            background: "rgba(255,255,255,0.78)",
+            boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          {filtered.length === 0 ? (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-sm" style={{ color: D.ink3 }}>
+                {isPending ? "読み込み中..." : "記録がありません"}
+              </p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto">
-              {records.map((record) => {
-                const isSelected = record.id === selectedId;
+            <div className="h-full overflow-y-auto">
+              {/* テーブルヘッダー */}
+              <div
+                className="grid px-6 py-4 text-xs font-semibold"
+                style={{
+                  gridTemplateColumns: "100px 1fr 90px 110px 1fr auto",
+                  color: D.ink3,
+                  borderBottom: `1px solid ${D.divider}`,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                <div>日付</div>
+                <div>患者名</div>
+                <div>単位</div>
+                <div>実施時刻</div>
+                <div>算定加算</div>
+                <div>ステータス</div>
+              </div>
+
+              {filtered.map((record, i) => {
+                const sc = STATUS_COLOR[record.status] ?? STATUS_COLOR["scheduled"]!;
+                const canOpen = !!record.scheduleId;
                 return (
-                  <button
+                  <div
                     key={record.id}
-                    onClick={() => setSelectedId(isSelected ? null : record.id)}
-                    className={`flex w-full items-start gap-3 border-b border-[#eaeaea] px-4 py-3 text-left transition-colors last:border-0 ${
-                      isSelected ? "bg-[#6366f1]/10" : "hover:bg-[#fafafa]"
-                    }`}
+                    onClick={() => handleRowClick(record)}
+                    className="grid items-center px-6 py-4 transition-colors"
+                    style={{
+                      gridTemplateColumns: "100px 1fr 90px 110px 1fr auto",
+                      borderTop: i === 0 ? "none" : `1px solid ${D.divider}`,
+                      cursor: canOpen ? "pointer" : "default",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (canOpen)
+                        (e.currentTarget as HTMLDivElement).style.background =
+                          "rgba(20,24,60,0.018)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                    }}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium text-[#111]">
-                          {record.patientName}
-                        </span>
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLE[record.status] ?? STATUS_STYLE.scheduled}`}
-                        >
-                          {STATUS_LABEL[record.status]}
-                        </span>
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-2 text-xs text-[#888]">
-                        <span>{format(new Date(record.sessionDate + "T00:00:00"), "M月d日")}</span>
-                        <span>·</span>
-                        <span>{record.therapistName}</span>
-                        {record.units && <span>· {record.units}単位</span>}
-                        {record.actualStartTime && record.actualEndTime && (
-                          <span className="tabular-nums">
-                            · {record.actualStartTime}〜{record.actualEndTime}
+                    {/* 日付 */}
+                    <div
+                      className="text-sm font-semibold tabular-nums"
+                      style={{
+                        fontFamily: "var(--font-geist-mono, monospace)",
+                        color: D.ink,
+                      }}
+                    >
+                      {format(new Date(record.sessionDate + "T00:00:00"), "M/d")}
+                    </div>
+
+                    {/* 患者名 + 担当者 */}
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: D.ink }}>
+                        {record.patientName}
+                      </p>
+                      <p className="mt-0.5 text-xs" style={{ color: D.ink3 }}>
+                        {record.therapistName}
+                      </p>
+                    </div>
+
+                    {/* 単位数 */}
+                    <div className="text-sm" style={{ color: D.ink2 }}>
+                      {record.units != null ? (
+                        <span>
+                          <span className="font-bold" style={{ color: D.accent }}>
+                            {record.units}
                           </span>
-                        )}
-                      </div>
-                      {record.additions.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {record.additions.map((k) => {
-                            const opt = ADDITION_OPTIONS.find((o) => o.key === k);
-                            return opt ? (
-                              <span
-                                key={k}
-                                className="rounded-full bg-[#6366f1]/10 px-2 py-0.5 text-[10px] text-[#6366f1]"
-                              >
-                                {opt.label}
-                              </span>
-                            ) : null;
-                          })}
-                        </div>
+                          <span className="text-xs" style={{ color: D.ink3 }}>
+                            {" "}
+                            単位
+                          </span>
+                        </span>
+                      ) : (
+                        <span style={{ color: D.ink3 }}>—</span>
                       )}
                     </div>
-                    <ChevronDown
-                      size={14}
-                      className={`mt-1 shrink-0 text-[#888] transition-transform ${isSelected ? "rotate-180" : ""}`}
-                    />
-                  </button>
+
+                    {/* 実施時刻 */}
+                    <div
+                      className="text-xs tabular-nums"
+                      style={{
+                        fontFamily: "var(--font-geist-mono, monospace)",
+                        color: D.ink2,
+                      }}
+                    >
+                      {record.actualStartTime && record.actualEndTime
+                        ? `${record.actualStartTime}〜${record.actualEndTime}`
+                        : "—"}
+                    </div>
+
+                    {/* 算定加算 */}
+                    <div className="flex flex-wrap gap-1">
+                      {record.additions.length === 0 ? (
+                        <span style={{ color: D.ink3, fontSize: 12 }}>—</span>
+                      ) : (
+                        record.additions.slice(0, 2).map((k) => {
+                          const opt = ADDITION_OPTIONS.find((o) => o.key === k);
+                          return opt ? (
+                            <span
+                              key={k}
+                              className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                              style={{ background: D.accentSoft, color: D.accent }}
+                            >
+                              {opt.label}
+                            </span>
+                          ) : null;
+                        })
+                      )}
+                      {record.additions.length > 2 && (
+                        <span className="text-[10px]" style={{ color: D.ink3 }}>
+                          +{record.additions.length - 2}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* ステータス */}
+                    <div>
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                        style={{ background: sc.bg, color: sc.fg }}
+                      >
+                        <span
+                          className="h-1.5 w-1.5 shrink-0 rounded-full"
+                          style={{ background: sc.dot }}
+                        />
+                        {STATUS_LABEL[record.status]}
+                      </span>
+                    </div>
+                  </div>
                 );
               })}
             </div>
           )}
         </div>
-
-        {/* 右：コピー用テキスト */}
-        <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-[#eaeaea] bg-white">
-          {!selectedRecord ? (
-            <div className="flex flex-1 items-center justify-center text-sm text-[#888]">
-              左の一覧から記録を選択するとコピー用テキストが表示されます
-            </div>
-          ) : (
-            <>
-              <div className="flex shrink-0 items-center justify-between border-b border-[#eaeaea] px-5 py-3">
-                <div>
-                  <span className="text-sm font-medium text-[#111]">
-                    {selectedRecord.patientName}
-                  </span>
-                  <span className="ml-2 text-xs text-[#888]">
-                    {format(new Date(selectedRecord.sessionDate + "T00:00:00"), "M月d日")}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleCopy(selectedRecord)}
-                  className="flex items-center gap-1.5 rounded-lg border border-[#eaeaea] px-3 py-1.5 text-sm font-medium text-[#111] transition-colors hover:bg-[#fafafa]"
-                >
-                  {copiedId === selectedRecord.id ? (
-                    <Check size={14} className="text-green-600" />
-                  ) : (
-                    <Copy size={14} />
-                  )}
-                  {copiedId === selectedRecord.id ? "コピー済み" : "コピー"}
-                </button>
-              </div>
-              <textarea
-                readOnly
-                value={buildCopyText(selectedRecord)}
-                className="flex-1 resize-none p-5 font-mono text-sm leading-relaxed text-[#333] focus:outline-none"
-              />
-            </>
-          )}
-        </div>
       </div>
-    </div>
+
+      {/* SessionPanel */}
+      <SessionPanel
+        scheduleId={panelScheduleId}
+        sessionId={panelSessionId}
+        tenantId={tenantId}
+        onClose={handlePanelClose}
+        onSaved={handlePanelSaved}
+      />
+    </>
   );
 }

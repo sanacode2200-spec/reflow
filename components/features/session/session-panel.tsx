@@ -1,16 +1,25 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { X, AlertTriangle, Copy, Check } from "lucide-react";
+import {
+  X,
+  Calendar,
+  AlertTriangle,
+  Copy,
+  Check,
+  Sparkles,
+  CheckCircle,
+  ClipboardList,
+} from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { getSessionPanelData, upsertSession, type SessionPanelData } from "@/lib/actions/session";
 import { ADDITION_OPTIONS } from "@/lib/constants/session";
 import { calcUnitsFromMinutes } from "@/lib/rehab/calculator";
-import type { ScheduleWithRelations } from "@/lib/actions/schedule";
 
 type Props = {
-  schedule: ScheduleWithRelations | null;
+  scheduleId: string | null;
+  sessionId: string | null;
   tenantId: string;
   onClose: () => void;
   onSaved: () => void;
@@ -21,10 +30,22 @@ const STATUS_LABEL: Record<string, string> = {
   draft: "一時保存",
   completed: "実施済み",
 };
-const STATUS_STYLE: Record<string, string> = {
-  scheduled: "bg-[#f5f5f5] text-[#888]",
-  draft: "bg-orange-100 text-orange-700",
-  completed: "bg-green-50 text-green-700",
+
+const STATUS_COLOR: Record<string, { bg: string; fg: string; dot: string }> = {
+  scheduled: { bg: "rgba(20,24,60,0.06)", fg: "#5a5e72", dot: "#8a8fa3" },
+  draft: { bg: "rgba(245,158,11,0.14)", fg: "#b45309", dot: "#f59e0b" },
+  completed: { bg: "rgba(34,197,94,0.12)", fg: "#15803d", dot: "#22c55e" },
+};
+
+const D = {
+  ink: "#1d1f2b",
+  ink2: "#5a5e72",
+  ink3: "#8a8fa3",
+  accent: "#6366f1",
+  accentSoft: "rgba(99,102,241,0.12)",
+  warn: "#f59e0b",
+  warnSoft: "rgba(245,158,11,0.14)",
+  divider: "rgba(20,24,60,0.06)",
 };
 
 function timeToMinutes(t: string): number {
@@ -60,7 +81,6 @@ function buildCopyText(params: {
     soapP,
     additions,
   } = params;
-
   const additionLabels = additions
     .map((k) => ADDITION_OPTIONS.find((o) => o.key === k)?.label)
     .filter(Boolean)
@@ -80,12 +100,66 @@ function buildCopyText(params: {
   if (soapO.trim()) lines.push(`O（客観）:\n${soapO.trim()}`, "");
   if (soapA.trim()) lines.push(`A（評価）:\n${soapA.trim()}`, "");
   if (soapP.trim()) lines.push(`P（計画）:\n${soapP.trim()}`, "");
-
   return lines.join("\n").trimEnd();
 }
 
-export default function SessionPanel({ schedule, tenantId, onClose, onSaved }: Props) {
-  const isOpen = !!schedule;
+function SoapBox({
+  letter,
+  title,
+  value,
+  placeholder,
+  onChange,
+}: {
+  letter: string;
+  title: string;
+  value: string;
+  placeholder: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div
+      className="flex flex-col gap-2 rounded-2xl p-3"
+      style={{ background: "rgba(20,24,60,0.025)", minHeight: 90 }}
+    >
+      <div className="flex items-center gap-2">
+        <div
+          className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+          style={{ background: D.accent, fontFamily: "var(--font-geist-mono, monospace)" }}
+        >
+          {letter}
+        </div>
+        <span className="text-xs font-semibold" style={{ color: D.ink2 }}>
+          {title}
+        </span>
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={3}
+        maxLength={2000}
+        className="flex-1 resize-none bg-transparent text-sm leading-relaxed focus:outline-none"
+        style={{ color: value ? D.ink : D.ink3 }}
+      />
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const s = STATUS_COLOR[status] ?? STATUS_COLOR["scheduled"]!;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+      style={{ background: s.bg, color: s.fg }}
+    >
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: s.dot }} />
+      {STATUS_LABEL[status] ?? status}
+    </span>
+  );
+}
+
+export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose, onSaved }: Props) {
+  const isOpen = !!scheduleId;
 
   const [data, setData] = useState<SessionPanelData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -104,13 +178,15 @@ export default function SessionPanel({ schedule, tenantId, onClose, onSaved }: P
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (!schedule) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-    setFetchError(null);
+    if (!scheduleId) return;
+    let cancelled = false;
 
-    getSessionPanelData(schedule.id, tenantId)
-      .then((d) => {
+    void (async () => {
+      setLoading(true);
+      setFetchError(null);
+      try {
+        const d = await getSessionPanelData(scheduleId, tenantId);
+        if (cancelled) return;
         setData(d);
         const src = d.session;
         setStartTime(src?.actualStartTime ?? format(new Date(d.scheduleStartAt), "HH:mm"));
@@ -130,12 +206,18 @@ export default function SessionPanel({ schedule, tenantId, onClose, onSaved }: P
           setAdditions(preset);
         }
         setSaveError(null);
-      })
-      .catch((err) => setFetchError(err instanceof Error ? err.message : "読み込みに失敗しました"))
-      .finally(() => setLoading(false));
-    // schedule.id が変わったときのみ再フェッチ。schedule オブジェクト参照は意図的に除外
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schedule?.id, tenantId]);
+      } catch (err) {
+        if (!cancelled)
+          setFetchError(err instanceof Error ? err.message : "読み込みに失敗しました");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [scheduleId, tenantId]);
 
   const recalcUnits = (start: string, end: string) => {
     if (!start || !end) return;
@@ -172,14 +254,14 @@ export default function SessionPanel({ schedule, tenantId, onClose, onSaved }: P
   };
 
   const handleSave = (status: "draft" | "completed") => {
-    if (!schedule || !data) return;
+    if (!scheduleId || !data) return;
     setSaveError(null);
     startTransition(async () => {
       try {
         await upsertSession({
-          scheduleId: schedule.id,
+          scheduleId,
           tenantId,
-          sessionId: schedule.session_id,
+          sessionId,
           status,
           units,
           soapSubjective: soapS || null,
@@ -219,7 +301,8 @@ export default function SessionPanel({ schedule, tenantId, onClose, onSaved }: P
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/20"
+            className="fixed inset-0 z-40"
+            style={{ background: "rgba(20,24,60,0.18)" }}
             onClick={onClose}
           />
           <motion.aside
@@ -228,156 +311,263 @@ export default function SessionPanel({ schedule, tenantId, onClose, onSaved }: P
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed top-0 right-0 z-50 flex h-full w-full max-w-[740px] flex-col border-l border-[#eaeaea] bg-white shadow-xl"
+            className="fixed top-0 right-0 z-50 flex h-full w-full max-w-[860px] flex-col"
+            style={{
+              background:
+                "linear-gradient(160deg, rgba(247,243,238,0.99) 0%, rgba(241,236,255,0.99) 45%, rgba(236,243,255,0.99) 100%)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              borderLeft: `1px solid ${D.divider}`,
+              boxShadow: "-8px 0 40px rgba(20,24,60,0.12)",
+            }}
           >
-            {/* ヘッダー */}
-            <div className="flex shrink-0 items-center justify-between border-b border-[#eaeaea] px-5 py-4">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-[#111]">実施記録</h2>
-                {!loading && data && (
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[currentStatus] ?? STATUS_STYLE.scheduled}`}
-                  >
-                    {STATUS_LABEL[currentStatus]}
-                  </span>
-                )}
-                {!loading && data && (
-                  <span className="text-sm text-[#888]">
-                    {data.patientName}・{data.therapistName}
-                  </span>
-                )}
+            {/* ── ヘッダー ── */}
+            <div
+              className="flex shrink-0 items-center justify-between px-6 py-4"
+              style={{ borderBottom: `1px solid ${D.divider}` }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+                  style={{ background: D.accentSoft }}
+                >
+                  <ClipboardList size={20} color={D.accent} />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold" style={{ color: D.ink }}>
+                    実施記録
+                  </h2>
+                  {!loading && data && (
+                    <p className="text-xs" style={{ color: D.ink3 }}>
+                      {data.patientName}（担当：{data.therapistName}）
+                    </p>
+                  )}
+                </div>
+                {!loading && data && <StatusBadge status={currentStatus} />}
               </div>
-              <button
-                onClick={onClose}
-                className="rounded p-1 text-[#888] transition-colors hover:text-[#111]"
-              >
-                <X size={18} />
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopy}
+                  className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:opacity-80"
+                  style={{
+                    background: "rgba(255,255,255,0.7)",
+                    border: `1px solid ${D.divider}`,
+                    color: D.ink2,
+                  }}
+                >
+                  {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+                  コピー用テキスト
+                </button>
+                <button
+                  onClick={onClose}
+                  className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-black/5"
+                  style={{ color: D.ink3 }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
+            {/* ── ボディ ── */}
             {loading ? (
               <div className="flex flex-1 items-center justify-center">
-                <p className="text-sm text-[#888]">読み込み中...</p>
+                <p className="text-sm" style={{ color: D.ink3 }}>
+                  読み込み中...
+                </p>
               </div>
             ) : fetchError ? (
               <div className="flex flex-1 items-center justify-center p-6">
                 <p className="text-sm text-red-600">{fetchError}</p>
               </div>
             ) : (
-              <div className="flex min-h-0 flex-1">
-                {/* 左：コピー用テキスト */}
-                <div className="flex w-60 shrink-0 flex-col border-r border-[#eaeaea] bg-[#fafafa]">
-                  <div className="flex shrink-0 items-center justify-between border-b border-[#eaeaea] px-4 py-2.5">
-                    <span className="text-xs font-medium text-[#888]">コピー用テキスト</span>
-                    <button
-                      onClick={handleCopy}
-                      className="flex items-center gap-1 rounded-md border border-[#eaeaea] bg-white px-2 py-1 text-xs font-medium text-[#111] transition-colors hover:bg-[#f5f5f5]"
+              <div
+                className="min-h-0 flex-1 overflow-hidden p-5"
+                style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}
+              >
+                {/* ── 左カラム（入力フォーム） ── */}
+                <div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
+                  {/* 予約情報カード */}
+                  {data && (
+                    <div
+                      className="flex shrink-0 items-center gap-3 rounded-3xl p-4"
+                      style={{
+                        background: "rgba(255,255,255,0.78)",
+                        boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+                        backdropFilter: "blur(10px)",
+                      }}
                     >
-                      {copied ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
-                      {copied ? "コピー済み" : "コピー"}
-                    </button>
-                  </div>
-                  <textarea
-                    readOnly
-                    value={copyText}
-                    className="flex-1 resize-none bg-transparent p-4 font-mono text-[11px] leading-relaxed text-[#444] focus:outline-none"
-                  />
-                </div>
-
-                {/* 右：入力フォーム */}
-                <div className="flex flex-1 flex-col overflow-hidden">
-                  <div className="flex-1 space-y-4 overflow-y-auto p-5">
-                    {/* 予約情報 */}
-                    {data && (
-                      <div className="rounded-lg border border-[#eaeaea] bg-[#fafafa] px-4 py-2.5 text-sm">
-                        <span className="text-[#888]">予約：</span>
-                        <span className="font-medium text-[#111]">
-                          {format(new Date(data.scheduleStartAt), "M月d日 HH:mm")}〜
-                          {format(new Date(data.scheduleEndAt), "HH:mm")}
-                        </span>
-                        <span className="ml-2 text-xs text-[#888]">{data.scheduleUnits}単位</span>
+                      <div
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+                        style={{ background: D.accentSoft }}
+                      >
+                        <Calendar size={20} color={D.accent} />
                       </div>
-                    )}
-
-                    {/* 加算アラート */}
-                    {initial && (
-                      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                        <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber-500" />
-                        <p className="text-xs text-amber-700">
-                          <span className="font-medium">初期加算対象</span>（残{initialDaysLeft}日）
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold" style={{ color: D.ink3 }}>
+                          予約
+                        </p>
+                        <p
+                          className="text-base font-bold"
+                          style={{ fontFamily: "var(--font-geist-mono, monospace)" }}
+                        >
+                          {format(new Date(data.scheduleStartAt), "M月d日")}{" "}
+                          <span style={{ color: D.ink2 }}>
+                            {format(new Date(data.scheduleStartAt), "HH:mm")} —{" "}
+                            {format(new Date(data.scheduleEndAt), "HH:mm")}
+                          </span>{" "}
+                          <span style={{ color: D.accent }}>{data.scheduleUnits}単位</span>
                         </p>
                       </div>
-                    )}
-                    {early && !initial && (
-                      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                        <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber-500" />
-                        <p className="text-xs text-amber-700">
-                          <span className="font-medium">早期加算対象</span>（残{earlyDaysLeft}日）
-                        </p>
-                      </div>
-                    )}
+                      {(initial || early) && (
+                        <div
+                          className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+                          style={{ background: D.warnSoft, color: "#b45309" }}
+                        >
+                          <AlertTriangle size={11} color={D.warn} />
+                          {initial ? "初期加算対象" : "早期加算対象"} · 残
+                          {initial ? initialDaysLeft : earlyDaysLeft}日
+                        </div>
+                      )}
+                    </div>
+                  )}
 
+                  {/* 実施時刻・単位数・離床 */}
+                  <div
+                    className="shrink-0 rounded-3xl p-5"
+                    style={{
+                      background: "rgba(255,255,255,0.78)",
+                      boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+                      backdropFilter: "blur(10px)",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gap: 20,
+                    }}
+                  >
                     {/* 実施時刻 */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium text-[#888]">
+                    <div className="flex flex-col gap-2">
+                      <label
+                        className="text-xs font-semibold"
+                        style={{ color: D.ink3, letterSpacing: "0.02em" }}
+                      >
                         実施時刻
                       </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="time"
-                          value={startTime}
-                          onChange={(e) => {
-                            setStartTime(e.target.value);
-                            recalcUnits(e.target.value, endTime);
-                          }}
-                          className="w-28 rounded-lg border border-[#eaeaea] px-2 py-1.5 text-sm focus:border-[#111] focus:outline-none"
-                        />
-                        <span className="text-[#888]">〜</span>
-                        <input
-                          type="time"
-                          value={endTime}
-                          onChange={(e) => {
-                            setEndTime(e.target.value);
-                            recalcUnits(startTime, e.target.value);
-                          }}
-                          className="w-28 rounded-lg border border-[#eaeaea] px-2 py-1.5 text-sm focus:border-[#111] focus:outline-none"
-                        />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <div
+                          className="rounded-xl px-3 py-2"
+                          style={{ background: "rgba(20,24,60,0.04)" }}
+                        >
+                          <input
+                            type="time"
+                            value={startTime}
+                            onChange={(e) => {
+                              setStartTime(e.target.value);
+                              recalcUnits(e.target.value, endTime);
+                            }}
+                            className="bg-transparent text-sm font-bold focus:outline-none"
+                            style={{
+                              fontFamily: "var(--font-geist-mono, monospace)",
+                              color: D.ink,
+                            }}
+                          />
+                        </div>
+                        <span style={{ color: D.ink3, fontSize: 14 }}>〜</span>
+                        <div
+                          className="rounded-xl px-3 py-2"
+                          style={{ background: "rgba(20,24,60,0.04)" }}
+                        >
+                          <input
+                            type="time"
+                            value={endTime}
+                            onChange={(e) => {
+                              setEndTime(e.target.value);
+                              recalcUnits(startTime, e.target.value);
+                            }}
+                            className="bg-transparent text-sm font-bold focus:outline-none"
+                            style={{
+                              fontFamily: "var(--font-geist-mono, monospace)",
+                              color: D.ink,
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
 
                     {/* 単位数 */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium text-[#888]">単位数</label>
+                    <div className="flex flex-col gap-2">
+                      <label
+                        className="text-xs font-semibold"
+                        style={{ color: D.ink3, letterSpacing: "0.02em" }}
+                      >
+                        単位数
+                      </label>
                       <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min={1}
-                          max={9}
-                          value={units}
-                          onChange={(e) => setUnits(Number(e.target.value))}
-                          className="w-20 rounded-lg border border-[#eaeaea] px-3 py-2 text-sm focus:border-[#111] focus:outline-none"
-                        />
-                        <span className="text-sm text-[#888]">単位（1単位＝20分）</span>
+                        <div
+                          className="flex items-center rounded-xl"
+                          style={{ background: "rgba(20,24,60,0.04)" }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setUnits((v) => Math.max(1, v - 1))}
+                            className="flex h-9 w-9 items-center justify-center rounded-l-xl text-base font-bold transition-colors hover:bg-black/5"
+                            style={{ color: D.ink2 }}
+                          >
+                            −
+                          </button>
+                          <span
+                            className="min-w-[28px] text-center text-base font-bold"
+                            style={{
+                              fontFamily: "var(--font-geist-mono, monospace)",
+                              color: D.ink,
+                            }}
+                          >
+                            {units}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setUnits((v) => Math.min(9, v + 1))}
+                            className="flex h-9 w-9 items-center justify-center rounded-r-xl text-base font-bold transition-colors hover:bg-black/5"
+                            style={{ color: D.ink2 }}
+                          >
+                            ＋
+                          </button>
+                        </div>
+                        <span className="text-xs" style={{ color: D.ink3 }}>
+                          単位
+                        </span>
                       </div>
                     </div>
 
-                    {/* 離床 — スロット切り替えと同スタイル */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium text-[#888]">離床</label>
-                      <div className="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm">
+                    {/* 離床 */}
+                    <div className="flex flex-col gap-2">
+                      <label
+                        className="text-xs font-semibold"
+                        style={{ color: D.ink3, letterSpacing: "0.02em" }}
+                      >
+                        離床
+                      </label>
+                      <div
+                        className="inline-flex gap-1 rounded-full p-1"
+                        style={{ background: "rgba(20,24,60,0.05)" }}
+                      >
                         {(["あり", "なし（減算）"] as const).map((label) => {
-                          const value = label === "あり";
-                          const active = isAmbulatory === value;
+                          const val = label === "あり";
+                          const active = isAmbulatory === val;
                           return (
                             <button
                               key={label}
                               type="button"
-                              onClick={() => setIsAmbulatory(value)}
-                              className={`rounded-md px-3 py-1 transition-all ${
+                              onClick={() => setIsAmbulatory(val)}
+                              className="rounded-full px-3 py-1.5 text-xs font-semibold transition-all"
+                              style={
                                 active
-                                  ? "bg-white font-medium text-slate-800 shadow-sm"
-                                  : "text-slate-500 hover:text-slate-700"
-                              }`}
+                                  ? {
+                                      background: "#fff",
+                                      color: D.ink,
+                                      boxShadow: "0 2px 6px rgba(20,24,60,0.08)",
+                                    }
+                                  : { color: D.ink3 }
+                              }
                             >
                               {label}
                             </button>
@@ -385,81 +575,182 @@ export default function SessionPanel({ schedule, tenantId, onClose, onSaved }: P
                         })}
                       </div>
                     </div>
-
-                    {/* SOAP記録 */}
-                    <div>
-                      <div className="mb-1.5 flex items-baseline gap-1">
-                        <label className="text-xs font-medium text-[#888]">記録（SOAP）</label>
-                        <span className="text-[10px] text-red-400">完了時いずれか必須</span>
-                      </div>
-                      <div className="space-y-2">
-                        {(
-                          [
-                            { key: "S", label: "S：主観的情報", value: soapS, set: setSoapS },
-                            { key: "O", label: "O：客観的情報", value: soapO, set: setSoapO },
-                            { key: "A", label: "A：評価", value: soapA, set: setSoapA },
-                            { key: "P", label: "P：計画", value: soapP, set: setSoapP },
-                          ] as const
-                        ).map(({ key, label, value, set }) => (
-                          <div key={key}>
-                            <p className="mb-0.5 text-[10px] font-medium text-[#888]">{label}</p>
-                            <textarea
-                              value={value}
-                              onChange={(e) => set(e.target.value)}
-                              rows={2}
-                              maxLength={2000}
-                              className="w-full resize-none rounded-lg border border-[#eaeaea] px-3 py-2 text-sm focus:border-[#111] focus:outline-none"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 算定加算 */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium text-[#888]">
-                        算定加算
-                      </label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {ADDITION_OPTIONS.map(({ key, label }) => {
-                          const active = additions.includes(key);
-                          const isAlert =
-                            (key === "initial" && initial) || (key === "early_rehab" && early);
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => toggleAddition(key)}
-                              className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                                active
-                                  ? "border-[#6366f1] bg-[#6366f1]/10 text-[#6366f1]"
-                                  : "border-[#eaeaea] text-[#888] hover:border-[#ccc] hover:text-[#555]"
-                              }`}
-                            >
-                              {isAlert && !active && (
-                                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                              )}
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {saveError && (
-                      <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-                        {saveError}
-                      </div>
-                    )}
                   </div>
 
-                  {/* フッター */}
-                  <div className="flex shrink-0 gap-2 border-t border-[#eaeaea] px-5 py-4">
+                  {/* SOAP記録 */}
+                  <div
+                    className="flex flex-1 flex-col rounded-3xl p-4"
+                    style={{
+                      background: "rgba(255,255,255,0.78)",
+                      boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+                      backdropFilter: "blur(10px)",
+                      minHeight: 260,
+                    }}
+                  >
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="text-sm font-bold" style={{ color: D.ink }}>
+                        記録（SOAP）
+                      </span>
+                      <span
+                        className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                        style={{ background: D.accentSoft, color: D.accent }}
+                      >
+                        完了時いずれか必須
+                      </span>
+                      <div
+                        className="ml-auto flex cursor-pointer items-center gap-1 text-xs font-semibold"
+                        style={{ color: D.accent }}
+                      >
+                        <Sparkles size={12} />
+                        AI下書き
+                      </div>
+                    </div>
+                    <div
+                      className="flex-1"
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gridTemplateRows: "1fr 1fr",
+                        gap: 8,
+                        minHeight: 0,
+                      }}
+                    >
+                      <SoapBox
+                        letter="S"
+                        title="主観的情報"
+                        value={soapS}
+                        onChange={setSoapS}
+                        placeholder="患者の訴え・自覚症状"
+                      />
+                      <SoapBox
+                        letter="O"
+                        title="客観的情報"
+                        value={soapO}
+                        onChange={setSoapO}
+                        placeholder="バイタル・ROM・MMT など"
+                      />
+                      <SoapBox
+                        letter="A"
+                        title="評価"
+                        value={soapA}
+                        onChange={setSoapA}
+                        placeholder="評価所見"
+                      />
+                      <SoapBox
+                        letter="P"
+                        title="計画"
+                        value={soapP}
+                        onChange={setSoapP}
+                        placeholder="次回までの計画"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── 右カラム（算定加算 + コピー + ボタン） ── */}
+                <div className="flex min-h-0 flex-col gap-3">
+                  {/* 算定加算 */}
+                  <div
+                    className="shrink-0 rounded-3xl p-4"
+                    style={{
+                      background: "rgba(255,255,255,0.78)",
+                      boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    <p className="mb-3 text-sm font-bold" style={{ color: D.ink }}>
+                      算定加算
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {ADDITION_OPTIONS.map(({ key, label }) => {
+                        const active = additions.includes(key);
+                        const isAlert =
+                          (key === "initial" && initial) || (key === "early_rehab" && early);
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => toggleAddition(key)}
+                            className="flex items-center gap-1 rounded-full px-3 py-2 text-xs font-semibold transition-all"
+                            style={
+                              active
+                                ? {
+                                    background: D.accent,
+                                    color: "#fff",
+                                    boxShadow: "0 6px 14px rgba(99,102,241,0.25)",
+                                  }
+                                : { background: "rgba(20,24,60,0.04)", color: D.ink2 }
+                            }
+                          >
+                            {active && <Check size={11} />}
+                            {label}
+                            {isAlert && !active && (
+                              <span className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* コピー用テキスト */}
+                  <div
+                    className="flex flex-1 flex-col rounded-3xl p-4"
+                    style={{
+                      background: "rgba(255,255,255,0.78)",
+                      boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+                      backdropFilter: "blur(10px)",
+                      minHeight: 0,
+                    }}
+                  >
+                    <p className="mb-2 text-sm font-bold" style={{ color: D.ink }}>
+                      コピー用テキスト
+                    </p>
+                    <div
+                      className="flex-1 overflow-y-auto rounded-2xl p-3 text-xs leading-relaxed"
+                      style={{
+                        background: "rgba(20,24,60,0.03)",
+                        fontFamily: "var(--font-geist-mono, monospace)",
+                        color: D.ink2,
+                        whiteSpace: "pre-wrap",
+                        minHeight: 0,
+                      }}
+                    >
+                      {copyText}
+                    </div>
+                    <button
+                      onClick={handleCopy}
+                      className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full py-2.5 text-sm font-semibold transition-colors hover:opacity-80"
+                      style={{
+                        background: "rgba(255,255,255,0.7)",
+                        border: `1px solid ${D.divider}`,
+                        color: D.ink2,
+                      }}
+                    >
+                      {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+                      {copied ? "コピー済み" : "クリップボードにコピー"}
+                    </button>
+                  </div>
+
+                  {/* エラー */}
+                  {saveError && (
+                    <p className="shrink-0 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+                      {saveError}
+                    </p>
+                  )}
+
+                  {/* 保存ボタン */}
+                  <div className="flex shrink-0 gap-3">
                     <button
                       type="button"
                       disabled={isPending}
                       onClick={() => handleSave("draft")}
-                      className="flex-1 rounded-lg border border-[#eaeaea] px-4 py-2 text-sm font-medium text-[#111] transition-colors hover:bg-[#fafafa] disabled:opacity-50"
+                      className="flex-1 rounded-2xl py-3.5 text-sm font-semibold transition-colors hover:opacity-80 disabled:opacity-50"
+                      style={{
+                        background: "rgba(255,255,255,0.7)",
+                        border: `1px solid ${D.divider}`,
+                        color: D.ink2,
+                      }}
                     >
                       {isPending ? "保存中..." : "一時保存"}
                     </button>
@@ -468,8 +759,14 @@ export default function SessionPanel({ schedule, tenantId, onClose, onSaved }: P
                       disabled={isPending || !canComplete}
                       onClick={() => handleSave("completed")}
                       title={!canComplete ? "単位数とSOAPを入力してください" : undefined}
-                      className="flex-1 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex flex-[1.4] items-center justify-center gap-1.5 rounded-2xl py-3.5 text-sm font-semibold transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{
+                        background: D.accent,
+                        color: "#fff",
+                        boxShadow: "0 8px 18px rgba(99,102,241,0.3)",
+                      }}
                     >
+                      <CheckCircle size={16} />
                       {isPending ? "保存中..." : "実施完了"}
                     </button>
                   </div>

@@ -103,7 +103,8 @@ export default function ScheduleClient({
       />
 
       <SessionPanel
-        schedule={recordSchedule}
+        scheduleId={recordSchedule?.id ?? null}
+        sessionId={recordSchedule?.session_id ?? null}
         tenantId={tenantId}
         onClose={() => setRecordSchedule(null)}
         onSaved={handleRefresh}

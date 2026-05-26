@@ -400,7 +400,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
         <p className="text-sm text-[#888]">{filtered.length}名</p>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[#eaeaea] bg-white">
+      <div className="glass-card overflow-x-auto" style={{ padding: 0 }}>
         <table className="w-full text-sm">
           <thead ref={theadRef}>
             {table.getHeaderGroups().map((hg) => (

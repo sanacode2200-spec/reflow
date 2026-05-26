@@ -34,8 +34,9 @@ export default async function SchedulePage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <div className="shrink-0 px-6 pt-5 pb-3">
-        <h1 className="text-xl font-bold text-[#111]">スケジュール</h1>
+      <div className="shrink-0 px-6 pt-6 pb-3">
+        <h1 className="text-2xl font-bold tracking-tight text-[#1d1f2b]">スケジュール</h1>
+        <p className="mt-1 text-sm text-[#8a8fa3]">週表示 · 1単位 = 20分</p>
       </div>
       <div className="min-h-0 flex-1">
         <ScheduleClient

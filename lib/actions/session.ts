@@ -53,6 +53,7 @@ export type SessionPanelData = {
 
 export type SessionRecord = {
   id: string;
+  scheduleId: string | null;
   sessionDate: string;
   status: "scheduled" | "draft" | "completed";
   patientId: string;
@@ -270,6 +271,7 @@ export async function getSessionRecords(
   const rows = await db
     .select({
       id: sessions.id,
+      schedule_id: sessions.schedule_id,
       session_date: sessions.session_date,
       status: sessions.status,
       patient_id: sessions.patient_id,
@@ -293,6 +295,7 @@ export async function getSessionRecords(
 
   return rows.map((r) => ({
     id: r.id,
+    scheduleId: r.schedule_id,
     sessionDate: r.session_date,
     status: r.status,
     patientId: r.patient_id,

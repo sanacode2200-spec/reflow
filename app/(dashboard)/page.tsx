@@ -260,9 +260,9 @@ export default async function DashboardPage() {
     <div className="min-h-screen p-6">
       {/* ヘッダー */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-[#111]">ダッシュボード</h1>
-        <p className="mt-0.5 text-sm text-[#888]">
-          {format(today, "yyyy年M月d日（E）", { locale: ja })}
+        <h1 className="text-2xl font-bold tracking-tight text-[#1d1f2b]">ダッシュボード</h1>
+        <p className="mt-1 text-sm text-[#8a8fa3]">
+          {format(today, "yyyy年M月d日（E）", { locale: ja })} · 今日の予約 {stats.todayCount} 件
         </p>
       </div>
 

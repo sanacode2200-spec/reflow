@@ -172,7 +172,7 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[#eaeaea] bg-white">
+      <div className="glass-card overflow-x-auto" style={{ padding: 0 }}>
         <table className="w-full text-sm">
           <thead>
             {table.getHeaderGroups().map((hg) => (
