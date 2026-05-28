@@ -7,6 +7,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import {
+  getTenantIdFromAuthenticatedUser,
+  requireTenantAccess,
+  requireUser,
+} from "@/lib/actions/auth";
 
 const staffCodeSchema = z.string().regex(/^\d{4}$/, "スタッフIDは数字4桁で入力してください");
 
@@ -31,11 +36,10 @@ const updateStaffSchema = z.object({
 });
 
 export async function getTenantIdFromUser(userId: string): Promise<string> {
-  const profile = await db.query.profiles.findFirst({
-    where: (p, { eq }) => eq(p.id, userId),
-  });
-  if (!profile) throw new Error("Profile not found");
-  return profile.tenant_id;
+  const user = await requireUser();
+  if (user.id !== userId) throw new Error("Forbidden");
+
+  return getTenantIdFromAuthenticatedUser(userId);
 }
 
 function getAdminSupabase() {
@@ -46,16 +50,7 @@ function getAdminSupabase() {
 }
 
 async function assertAdmin(tenantId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const profile = await db.query.profiles.findFirst({
-    where: (p, { eq }) => eq(p.id, user.id),
-  });
-  if (!profile || profile.tenant_id !== tenantId) throw new Error("Forbidden");
+  const { user } = await requireTenantAccess(tenantId);
 
   const staff = await db.query.staffs.findFirst({
     where: (s, { eq, and, isNull }) =>
@@ -78,11 +73,7 @@ export type StaffRow = {
 };
 
 export async function getStaffList(tenantId: string): Promise<StaffRow[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await requireTenantAccess(tenantId);
 
   const rows = await db
     .select()
@@ -186,6 +177,15 @@ export async function updateStaff(tenantId: string, staffId: string, input: unkn
 export async function archiveStaff(tenantId: string, staffId: string) {
   await assertAdmin(tenantId);
 
+  const adminRows = await db
+    .select({ id: staffs.id })
+    .from(staffs)
+    .where(
+      and(eq(staffs.tenant_id, tenantId), eq(staffs.role, "admin"), isNull(staffs.deleted_at))
+    );
+  const isLastAdmin = adminRows.length === 1 && adminRows[0]?.id === staffId;
+  if (isLastAdmin) throw new Error("最後の管理者を削除することはできません");
+
   await db
     .update(staffs)
     .set({ deleted_at: new Date() })
@@ -218,11 +218,10 @@ export async function adminResetPassword(tenantId: string, staffId: string, newP
 export async function changeMyPassword(currentPassword: string, newPassword: string) {
   if (newPassword.length < 4) throw new Error("パスワードは4文字以上で入力してください");
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await requireUser();
   if (!user?.email) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
 
   const { error: signInError } = await supabase.auth.signInWithPassword({
     email: user.email,

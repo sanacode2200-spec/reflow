@@ -13,7 +13,7 @@ import {
   parseISO,
   format,
 } from "date-fns";
-import { createClient } from "@/lib/supabase/server";
+import { requireTenantAccess } from "@/lib/actions/auth";
 
 const STANDARD_DAYS: Record<string, number> = {
   cerebrovascular: 180,
@@ -64,11 +64,7 @@ export async function getDashboardData(tenantId: string): Promise<{
   todaySchedules: TodayScheduleRow[];
   alerts: AlertRow[];
 }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { user } = await requireTenantAccess(tenantId);
 
   const now = new Date();
   const dayStart = startOfDay(now);

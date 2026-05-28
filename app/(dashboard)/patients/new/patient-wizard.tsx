@@ -188,7 +188,7 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
         ))}
       </div>
 
-      <div className="rounded-xl border border-[#eaeaea] bg-white p-6">
+      <div className="glass-card p-6">
         <form onSubmit={form.handleSubmit(handleSubmit)}>
           {step === 0 && <Step1 form={form} />}
           {step === 1 && <Step2 form={form} />}
@@ -239,12 +239,13 @@ function FieldError({ msg }: { msg?: string }) {
 }
 
 function SelectField({
-  label: _label,
+  label,
   ...props
 }: { label: string } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
+      aria-label={props["aria-label"] ?? label}
       className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
     >
       {props.children}

@@ -4,10 +4,10 @@ import { db } from "@/lib/db";
 import { sessions, schedules, patients, staffs, auditLogs } from "@/lib/db/schema";
 import { eq, and, isNull, gte, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { checkAdditions, type AdditionAlert } from "@/lib/rehab/additions";
 import { format } from "date-fns";
+import { requireTenantAccess } from "@/lib/actions/auth";
 
 const sessionUpsertSchema = z.object({
   scheduleId: z.string().min(1),
@@ -74,11 +74,7 @@ export async function getSessionPanelData(
   scheduleId: string,
   tenantId: string
 ): Promise<SessionPanelData> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await requireTenantAccess(tenantId);
 
   const rows = await db
     .select({
@@ -139,13 +135,8 @@ export async function getSessionPanelData(
 }
 
 export async function upsertSession(input: unknown) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-
   const parsed = sessionUpsertSchema.parse(input);
+  const { user } = await requireTenantAccess(parsed.tenantId);
 
   if (parsed.status === "completed") {
     if (!parsed.units) throw new Error("完了時は単位数が必要です");
@@ -158,8 +149,12 @@ export async function upsertSession(input: unknown) {
   }
 
   const schedule = await db.query.schedules.findFirst({
-    where: (s, { eq: eqFn, and: andFn }) =>
-      andFn(eqFn(s.id, parsed.scheduleId), eqFn(s.tenant_id, parsed.tenantId)),
+    where: (s, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
+      andFn(
+        eqFn(s.id, parsed.scheduleId),
+        eqFn(s.tenant_id, parsed.tenantId),
+        isNullFn(s.deleted_at)
+      ),
   });
   if (!schedule) throw new Error("予約が見つかりません");
 
@@ -170,6 +165,7 @@ export async function upsertSession(input: unknown) {
       where: (s, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
         andFn(
           eqFn(s.id, parsed.sessionId!),
+          eqFn(s.schedule_id, parsed.scheduleId),
           eqFn(s.tenant_id, parsed.tenantId),
           isNullFn(s.deleted_at)
         ),
@@ -224,6 +220,17 @@ export async function upsertSession(input: unknown) {
       })
       .where(and(eq(sessions.id, parsed.sessionId), eq(sessions.tenant_id, parsed.tenantId)));
   } else {
+    const existing = await db.query.sessions.findFirst({
+      where: (s, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
+        andFn(
+          eqFn(s.schedule_id, parsed.scheduleId),
+          eqFn(s.tenant_id, parsed.tenantId),
+          isNullFn(s.deleted_at)
+        ),
+      columns: { id: true },
+    });
+    if (existing) throw new Error("この予約には既に記録があります");
+
     await db.insert(sessions).values({
       tenant_id: parsed.tenantId,
       schedule_id: parsed.scheduleId,
@@ -254,11 +261,7 @@ export async function getSessionRecords(
   to: string,
   patientId?: string
 ): Promise<SessionRecord[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await requireTenantAccess(tenantId);
 
   const conditions = [
     eq(sessions.tenant_id, tenantId),

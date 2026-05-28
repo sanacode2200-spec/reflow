@@ -137,7 +137,7 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md border-[rgba(20,24,60,0.08)] bg-[rgba(255,255,255,0.92)] shadow-[0_24px_60px_rgba(20,24,60,0.14)] ring-0 backdrop-blur-xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? "スタッフ編集" : "スタッフ登録"}</DialogTitle>
         </DialogHeader>

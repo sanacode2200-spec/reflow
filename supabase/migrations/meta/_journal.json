@@ -8,6 +8,27 @@
       "when": 1779114162816,
       "tag": "0000_sad_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779114380000,
+      "tag": "0001_add_patient_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779552660000,
+      "tag": "0002_add_occupation_therapists",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779938024368,
+      "tag": "0003_align_current_schema",
+      "breakpoints": true
     }
   ]
 }

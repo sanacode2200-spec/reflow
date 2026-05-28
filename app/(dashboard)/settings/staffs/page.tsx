@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
-import { staffs } from "@/lib/db/schema";
-import { eq, isNull } from "drizzle-orm";
 import { getStaffList, getTenantIdFromUser } from "@/lib/actions/staff";
 import StaffTable from "@/components/features/staff/staff-table";
 

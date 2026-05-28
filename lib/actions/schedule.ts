@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { schedules, sessions, patients, staffs } from "@/lib/db/schema";
 import { eq, and, isNull, lt, gt, ne, gte, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireCurrentTenant, requireTenantAccess } from "@/lib/actions/auth";
 import { z } from "zod";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
 
@@ -45,11 +45,7 @@ export async function getSchedules(
   from: Date,
   to: Date
 ): Promise<ScheduleWithRelations[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await requireTenantAccess(tenantId);
 
   const rows = await db
     .select({
@@ -72,8 +68,15 @@ export async function getSchedules(
     .from(schedules)
     .innerJoin(patients, eq(schedules.patient_id, patients.id))
     .innerJoin(staffs, eq(schedules.therapist_id, staffs.id))
-    .leftJoin(sessions, eq(sessions.schedule_id, schedules.id))
-    .where(and(eq(schedules.tenant_id, tenantId), isNull(schedules.deleted_at)));
+    .leftJoin(sessions, and(eq(sessions.schedule_id, schedules.id), isNull(sessions.deleted_at)))
+    .where(
+      and(
+        eq(schedules.tenant_id, tenantId),
+        isNull(schedules.deleted_at),
+        lte(schedules.start_at, to),
+        gt(schedules.end_at, from)
+      )
+    );
 
   return rows
     .filter((r) => {
@@ -89,11 +92,7 @@ export async function getSchedules(
 }
 
 export async function deleteSchedule(scheduleId: string, tenantId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await requireTenantAccess(tenantId);
 
   await db
     .update(schedules)
@@ -110,21 +109,13 @@ export async function deleteSchedule(scheduleId: string, tenantId: string) {
 }
 
 export async function getTenantId(): Promise<string> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const profile = await db.query.profiles.findFirst({
-    where: (p, { eq }) => eq(p.id, user.id),
-  });
-
-  if (!profile) throw new Error("Profile not found");
-  return profile.tenant_id;
+  const { tenantId } = await requireCurrentTenant();
+  return tenantId;
 }
 
 export async function getStaffs(tenantId: string) {
+  await requireTenantAccess(tenantId);
+
   return db
     .select({ id: staffs.id, name: staffs.name, occupation: staffs.occupation })
     .from(staffs)
@@ -132,11 +123,7 @@ export async function getStaffs(tenantId: string) {
 }
 
 export async function getCurrentStaffId(tenantId: string): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { user } = await requireTenantAccess(tenantId);
 
   const staff = await db.query.staffs.findFirst({
     where: (s, { eq, and, isNull }) =>
@@ -149,11 +136,7 @@ export async function getCurrentStaffId(tenantId: string): Promise<string | null
 export async function getPatientsForSchedule(
   tenantId: string
 ): Promise<{ id: string; name_kanji: string; name_kana: string }[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await requireTenantAccess(tenantId);
 
   return db
     .select({ id: patients.id, name_kanji: patients.name_kanji, name_kana: patients.name_kana })
@@ -166,11 +149,7 @@ export async function createSchedule(
   tenantId: string,
   input: unknown
 ): Promise<{ error: string } | void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await requireTenantAccess(tenantId);
 
   const parsed = scheduleCreateSchema.parse(input);
   const startAt = new Date(parsed.start_at);
@@ -184,6 +163,13 @@ export async function createSchedule(
     columns: { max_units_per_day: true, max_units_per_week: true },
   });
   if (!therapist) return { error: "療法士が見つかりません" };
+
+  const patient = await db.query.patients.findFirst({
+    where: (p, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
+      andFn(eqFn(p.id, parsed.patient_id), eqFn(p.tenant_id, tenantId), isNullFn(p.deleted_at)),
+    columns: { id: true },
+  });
+  if (!patient) return { error: "患者が見つかりません" };
 
   const { max_units_per_day, max_units_per_week } = therapist;
 
@@ -327,11 +313,7 @@ export async function createSchedule(
 }
 
 export async function cancelSchedule(scheduleId: string, tenantId: string, cancel: boolean) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await requireTenantAccess(tenantId);
 
   await db
     .update(schedules)
@@ -396,22 +378,27 @@ export async function moveSchedule(
   endAt: Date,
   units?: number
 ): Promise<{ error: string } | void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await requireTenantAccess(tenantId);
+
+  if (endAt <= startAt) return { error: "終了時刻は開始時刻より後にしてください" };
+
+  const therapist = await db.query.staffs.findFirst({
+    where: (s, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
+      andFn(eqFn(s.id, therapistId), eqFn(s.tenant_id, tenantId), isNullFn(s.deleted_at)),
+    columns: { id: true },
+  });
+  if (!therapist) return { error: "療法士が見つかりません" };
 
   if (await checkOverlap(tenantId, therapistId, scheduleId, startAt, endAt))
     return { error: "前後の予約と5分以上の間隔を空けてください" };
 
   const moving = await db.query.schedules.findFirst({
-    where: (s, { eq }) => eq(s.id, scheduleId),
+    where: (s, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
+      andFn(eqFn(s.id, scheduleId), eqFn(s.tenant_id, tenantId), isNullFn(s.deleted_at)),
   });
-  if (
-    moving &&
-    (await checkPatientOverlap(tenantId, moving.patient_id, scheduleId, startAt, endAt))
-  )
+  if (!moving) return { error: "予約が見つかりません" };
+
+  if (await checkPatientOverlap(tenantId, moving.patient_id, scheduleId, startAt, endAt))
     return { error: "移動先の時間帯にこの患者の別の予約があります" };
 
   const result = await db
@@ -442,11 +429,24 @@ export async function updateSchedule(
     comment?: string | null;
   }
 ): Promise<{ error: string } | void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await requireTenantAccess(tenantId);
+
+  if (input.endAt <= input.startAt) return { error: "終了時刻は開始時刻より後にしてください" };
+
+  const [therapist, patient] = await Promise.all([
+    db.query.staffs.findFirst({
+      where: (s, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
+        andFn(eqFn(s.id, input.therapistId), eqFn(s.tenant_id, tenantId), isNullFn(s.deleted_at)),
+      columns: { id: true },
+    }),
+    db.query.patients.findFirst({
+      where: (p, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
+        andFn(eqFn(p.id, input.patientId), eqFn(p.tenant_id, tenantId), isNullFn(p.deleted_at)),
+      columns: { id: true },
+    }),
+  ]);
+  if (!therapist) return { error: "療法士が見つかりません" };
+  if (!patient) return { error: "患者が見つかりません" };
 
   if (await checkOverlap(tenantId, input.therapistId, scheduleId, input.startAt, input.endAt))
     return { error: "前後の予約と5分以上の間隔を空けてください" };

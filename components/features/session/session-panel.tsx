@@ -301,7 +301,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-40 backdrop-blur-[2px]"
             style={{ background: "rgba(20,24,60,0.18)" }}
             onClick={onClose}
           />

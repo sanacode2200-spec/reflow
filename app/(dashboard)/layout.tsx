@@ -1,20 +1,22 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
-import { staffs } from "@/lib/db/schema";
-import { eq, isNull } from "drizzle-orm";
 import Sidebar from "@/components/sidebar";
 import BottomNav from "@/components/bottom-nav";
+import { requireCurrentTenant } from "@/lib/actions/auth";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  let auth;
+  try {
+    auth = await requireCurrentTenant();
+  } catch {
+    redirect("/login");
+  }
+
+  const { user, tenantId } = auth;
 
   const staff = await db.query.staffs.findFirst({
-    where: (s, { eq, and, isNull }) => and(eq(s.email, user.email ?? ""), isNull(s.deleted_at)),
+    where: (s, { eq, and, isNull }) =>
+      and(eq(s.email, user.email ?? ""), eq(s.tenant_id, tenantId), isNull(s.deleted_at)),
   });
 
   return (

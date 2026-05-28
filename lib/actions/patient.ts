@@ -2,9 +2,9 @@
 
 import { db } from "@/lib/db";
 import { patients, staffs } from "@/lib/db/schema";
-import { eq, and, isNull, or, ilike } from "drizzle-orm";
+import { eq, and, isNull, or, ilike, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireTenantAccess } from "@/lib/actions/auth";
 import { z } from "zod";
 
 const optTherapistId = z.preprocess(
@@ -76,13 +76,26 @@ export type PatientRow = {
   deleted_at: Date | null;
 };
 
-async function assertAuth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-  return user;
+async function assertTherapistsBelongToTenant(tenantId: string, data: PatientFormData) {
+  const therapistIds = [data.pt_therapist_id, data.ot_therapist_id, data.st_therapist_id].filter(
+    (id): id is string => Boolean(id)
+  );
+
+  const uniqueTherapistIds = [...new Set(therapistIds)];
+  const rows = await db
+    .select({ id: staffs.id })
+    .from(staffs)
+    .where(
+      and(
+        eq(staffs.tenant_id, tenantId),
+        isNull(staffs.deleted_at),
+        inArray(staffs.id, uniqueTherapistIds)
+      )
+    );
+
+  if (rows.length !== uniqueTherapistIds.length) {
+    throw new Error("選択された担当者が見つかりません");
+  }
 }
 
 export async function getPatients(
@@ -90,7 +103,7 @@ export async function getPatients(
   search = "",
   includeArchived = false
 ): Promise<PatientRow[]> {
-  await assertAuth();
+  await requireTenantAccess(tenantId);
 
   const rows = await db
     .select({
@@ -145,7 +158,7 @@ export async function getPatients(
 }
 
 export async function getPatient(id: string, tenantId: string): Promise<PatientRow | null> {
-  await assertAuth();
+  await requireTenantAccess(tenantId);
 
   const rows = await db
     .select({
@@ -190,8 +203,9 @@ export async function getPatient(id: string, tenantId: string): Promise<PatientR
 }
 
 export async function createPatient(tenantId: string, input: unknown) {
-  await assertAuth();
+  await requireTenantAccess(tenantId);
   const data = patientSchema.parse(input);
+  await assertTherapistsBelongToTenant(tenantId, data);
 
   const existing = await db.query.patients.findFirst({
     where: (p, { eq, and, isNull }) =>
@@ -210,8 +224,9 @@ export async function createPatient(tenantId: string, input: unknown) {
 }
 
 export async function updatePatient(id: string, tenantId: string, input: unknown) {
-  await assertAuth();
+  await requireTenantAccess(tenantId);
   const data = patientSchema.parse(input);
+  await assertTherapistsBelongToTenant(tenantId, data);
 
   const therapist_id = (data.pt_therapist_id ?? data.ot_therapist_id ?? data.st_therapist_id)!;
 
@@ -225,7 +240,7 @@ export async function updatePatient(id: string, tenantId: string, input: unknown
 }
 
 export async function archivePatient(id: string, tenantId: string) {
-  await assertAuth();
+  await requireTenantAccess(tenantId);
   await db
     .update(patients)
     .set({ deleted_at: new Date() })
@@ -234,7 +249,7 @@ export async function archivePatient(id: string, tenantId: string) {
 }
 
 export async function restorePatient(id: string, tenantId: string) {
-  await assertAuth();
+  await requireTenantAccess(tenantId);
   await db
     .update(patients)
     .set({ deleted_at: null, updated_at: new Date() })
