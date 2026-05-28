@@ -305,9 +305,9 @@ export default function CalendarGrid({
   const slotLines = Array.from({ length: totalSlots + 1 }, (_, i) => i);
 
   return (
-    <div className="flex min-w-max flex-col select-none">
+    <div className="flex min-w-max flex-col bg-white/50 select-none">
       {/* ── ヘッダー行 1: 曜日 + 日付 ── */}
-      <div className="sticky top-0 z-20 flex border-b border-slate-100 bg-white">
+      <div className="sticky top-0 z-20 flex border-b border-[rgba(20,24,60,0.06)] bg-white/85 backdrop-blur">
         <div style={{ width: TIME_COL_W, flexShrink: 0 }} />
         {weekDays.map((day, dIdx) => {
           const isToday = isSameDay(day, new Date());
@@ -320,19 +320,19 @@ export default function CalendarGrid({
               ? "text-red-500"
               : isSat
                 ? "text-violet-500"
-                : "text-gray-700";
+                : "text-[#1d1f2b]";
           const dateColor = isToday
             ? "text-[#6366f1]"
             : isSun
               ? "text-red-400"
               : isSat
                 ? "text-violet-400"
-                : "text-gray-400";
+                : "text-[#8a8fa3]";
           return (
             <div
               key={dIdx}
               style={{ width: COL_W * visibleStaffs.length, flexShrink: 0 }}
-              className={`border-l border-slate-100 py-1.5 text-center ${isToday ? "bg-[#6366f1]/[0.05]" : ""}`}
+              className={`border-l border-[rgba(20,24,60,0.06)] py-1.5 text-center ${isToday ? "bg-[#6366f1]/[0.05]" : ""}`}
             >
               <span className={`text-sm font-bold ${dayColor}`}>{DAY_NAMES_JP[dIdx]}</span>
               <span className={`ml-1.5 text-xs ${dateColor}`}>{format(day, "M/d")}</span>
@@ -342,7 +342,7 @@ export default function CalendarGrid({
       </div>
 
       {/* ── ヘッダー行 2: スタッフ名 ── */}
-      <div className="sticky top-[36px] z-20 flex border-b border-slate-100 bg-white">
+      <div className="sticky top-[36px] z-20 flex border-b border-[rgba(20,24,60,0.06)] bg-white/85 backdrop-blur">
         <div style={{ width: TIME_COL_W, flexShrink: 0 }} />
         {weekDays.map((day, dIdx) =>
           visibleStaffs.map((staff) => {
@@ -353,12 +353,12 @@ export default function CalendarGrid({
               <div
                 key={`${dIdx}-${staff.id}`}
                 style={{ width: COL_W, flexShrink: 0 }}
-                className={`border-l border-slate-100 py-1 text-center ${isToday ? "bg-[#6366f1]/[0.04]" : ""}`}
+                className={`border-l border-[rgba(20,24,60,0.06)] py-1 text-center ${isToday ? "bg-[#6366f1]/[0.04]" : ""}`}
               >
                 <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${headerCls}`}>
                   {staff.occupation.toUpperCase()}
                 </span>
-                <div className="mt-0.5 truncate px-1 text-[11px] leading-tight text-gray-600">
+                <div className="mt-0.5 truncate px-1 text-[11px] leading-tight text-[#555b6d]">
                   {staff.name.split(" ")[0]}
                 </div>
               </div>
@@ -372,7 +372,7 @@ export default function CalendarGrid({
         {/* 時間軸 */}
         <div
           style={{ width: TIME_COL_W, height: totalHeightPx, flexShrink: 0, position: "relative" }}
-          className="border-r border-slate-100"
+          className="border-r border-[rgba(20,24,60,0.06)] bg-white/40"
         >
           {hourLabels.map(({ label, topPx, hour }) => (
             <div
@@ -388,7 +388,7 @@ export default function CalendarGrid({
                       ? "translateY(-100%)"
                       : "translateY(-50%)",
               }}
-              className="pr-1.5 text-[10px] whitespace-nowrap text-gray-400"
+              className="pr-1.5 text-[10px] whitespace-nowrap text-[#8a8fa3]"
             >
               {label}
             </div>

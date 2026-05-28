@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getTenantIdFromUser } from "@/lib/actions/staff";
+import { getPatients } from "@/lib/actions/patient";
 import { getSessionRecords } from "@/lib/actions/session";
-import { db } from "@/lib/db";
+import { getStaffs } from "@/lib/actions/schedule";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import RecordsClient from "@/components/features/session/records-client";
 
@@ -23,15 +24,10 @@ export default async function RecordsPage({ searchParams }: Props) {
   const to = params.to ?? format(endOfMonth(today), "yyyy-MM-dd");
   const patientId = params.patient_id;
 
-  const [records, patientRow] = await Promise.all([
-    getSessionRecords(tenantId, from, to, patientId),
-    patientId
-      ? db.query.patients.findFirst({
-          where: (p, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
-            andFn(eqFn(p.id, patientId), eqFn(p.tenant_id, tenantId), isNullFn(p.deleted_at)),
-          columns: { name_kanji: true },
-        })
-      : Promise.resolve(undefined),
+  const [records, patientList, staffList] = await Promise.all([
+    patientId ? getSessionRecords(tenantId, from, to, patientId) : Promise.resolve([]),
+    getPatients(tenantId),
+    getStaffs(tenantId),
   ]);
 
   return (
@@ -41,7 +37,9 @@ export default async function RecordsPage({ searchParams }: Props) {
         initialRecords={records}
         initialFrom={from}
         initialTo={to}
-        patientName={patientRow?.name_kanji}
+        initialPatientId={patientId}
+        patients={patientList}
+        staffs={staffList}
       />
     </div>
   );

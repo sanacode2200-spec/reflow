@@ -126,7 +126,7 @@
     @apply text-foreground;
     font-family:
       var(--font-zen-maru, var(--font-inter)), var(--font-noto-sans-jp), system-ui, sans-serif;
-    background: linear-gradient(160deg, #f7f3ee 0%, #f1ecff 45%, #ecf3ff 100%);
+    background: linear-gradient(160deg, #f6efe7 0%, #eee6ff 45%, #e6f0ff 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }

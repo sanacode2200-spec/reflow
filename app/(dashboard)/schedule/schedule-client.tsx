@@ -64,18 +64,20 @@ export default function ScheduleClient({
         </Button>
       </div>
 
-      <div className="hidden min-h-0 flex-1 overflow-hidden px-6 pb-4 md:block">
-        <CalendarView
-          schedules={schedules}
-          staffs={staffs}
-          patients={patients}
-          currentStaffId={currentStaffId ?? ""}
-          tenantId={tenantId}
-          onRefresh={handleRefresh}
-          onCreateOpen={(params) => setPanelState({ mode: "create", ...params })}
-          onEditOpen={(schedule) => setPanelState({ mode: "edit", schedule })}
-          onRecordOpen={(schedule) => setRecordSchedule(schedule)}
-        />
+      <div className="hidden min-h-0 flex-1 overflow-hidden px-6 pb-6 md:block">
+        <div className="glass-card h-full overflow-visible">
+          <CalendarView
+            schedules={schedules}
+            staffs={staffs}
+            patients={patients}
+            currentStaffId={currentStaffId ?? ""}
+            tenantId={tenantId}
+            onRefresh={handleRefresh}
+            onCreateOpen={(params) => setPanelState({ mode: "create", ...params })}
+            onEditOpen={(schedule) => setPanelState({ mode: "edit", schedule })}
+            onRecordOpen={(schedule) => setRecordSchedule(schedule)}
+          />
+        </div>
       </div>
 
       <div className="md:hidden">

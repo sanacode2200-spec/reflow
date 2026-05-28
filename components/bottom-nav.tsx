@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/patients", label: "患者", icon: Users },
   { href: "/schedule", label: "スケジュール", icon: CalendarDays },
-  { href: "/records", label: "記録", icon: ClipboardList },
+  { href: "/records", label: "記録一覧", icon: ClipboardList },
   { href: "/settings/staffs", label: "設定", icon: Settings },
 ];
 

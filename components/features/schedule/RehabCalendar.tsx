@@ -524,7 +524,7 @@ export default function RehabCalendar({
             onClick: () => onRecordOpen?.(instance.schedule_id),
           },
           {
-            label: "編集",
+            label: "予約を編集",
             onClick: () => onEditRequested?.(instance.schedule_id),
           },
           {
@@ -581,7 +581,7 @@ export default function RehabCalendar({
       onDragCancel={handleDragCancel}
     >
       <div
-        className="relative flex h-full flex-col overflow-hidden bg-gray-50"
+        className="relative flex h-full flex-col overflow-hidden rounded-[1.5rem] bg-white/55"
         onClick={() => {
           setSelection(null);
           selectionRef.current = null;
@@ -605,42 +605,42 @@ export default function RehabCalendar({
         )}
         {/* ── ナビゲーションバー ── */}
         <div
-          className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-100 bg-white px-4 py-3"
+          className="relative z-40 flex shrink-0 flex-wrap items-center gap-2 border-b border-[rgba(20,24,60,0.06)] bg-white/70 px-4 py-3 backdrop-blur"
           onClick={(e) => e.stopPropagation()}
         >
           {/* 週ナビ */}
           <button
             onClick={() => setCurrentWeekStart((w) => subWeeks(w, 1))}
-            className="rounded-lg px-3 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg px-3 py-1.5 text-sm text-[#8a8fa3] transition-colors hover:bg-white hover:text-[#1d1f2b]"
           >
             ← 前週
           </button>
-          <span className="min-w-[180px] text-center text-sm font-bold text-slate-800">
+          <span className="min-w-[180px] text-center text-sm font-bold text-[#1d1f2b]">
             {weekLabel}
           </span>
           <button
             onClick={() => setCurrentWeekStart((w) => addWeeks(w, 1))}
-            className="rounded-lg px-3 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg px-3 py-1.5 text-sm text-[#8a8fa3] transition-colors hover:bg-white hover:text-[#1d1f2b]"
           >
             翌週 →
           </button>
           <button
             onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-            className="rounded-lg px-3 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg px-3 py-1.5 text-sm text-[#8a8fa3] transition-colors hover:bg-white hover:text-[#1d1f2b]"
           >
             今週
           </button>
 
           {/* 時間刻み切り替え */}
-          <div className="ml-2 flex overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm">
+          <div className="ml-2 flex overflow-hidden rounded-lg border border-[rgba(20,24,60,0.06)] bg-white/60 p-0.5 text-sm">
             {([20, 10, 5] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setSlotMinutes(m)}
                 className={`rounded-md px-3 py-1 transition-all ${
                   slotMinutes === m
-                    ? "bg-white font-medium text-slate-800 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "bg-[#6366f1] font-medium text-white shadow-sm"
+                    : "text-[#8a8fa3] hover:bg-white hover:text-[#1d1f2b]"
                 }`}
               >
                 {m}分
@@ -650,7 +650,7 @@ export default function RehabCalendar({
 
           {/* スタッフ選択エリア */}
           <div className="ml-4 flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-gray-400">表示中:</span>
+            <span className="text-xs text-[#8a8fa3]">表示中:</span>
             {visibleStaffs.map((staff) => {
               const isSelf = staff.id === currentStaffId;
               const chipCls =
@@ -679,19 +679,19 @@ export default function RehabCalendar({
               <div className="relative" ref={addMenuRef}>
                 <button
                   onClick={() => setShowAddMenu((v) => !v)}
-                  className="rounded-full border border-dashed border-gray-400 px-2 py-0.5 text-xs text-gray-500 transition-colors hover:bg-gray-100"
+                  className="rounded-full border border-dashed border-[#c9cbd6] px-2 py-0.5 text-xs text-[#8a8fa3] transition-colors hover:bg-white hover:text-[#1d1f2b]"
                 >
                   + 追加
                 </button>
                 {showAddMenu && (
-                  <div className="absolute top-full left-0 z-50 mt-1 min-w-[140px] rounded border border-gray-200 bg-white shadow-lg">
+                  <div className="absolute top-full left-0 z-[80] mt-1 min-w-[140px] rounded-xl border border-[rgba(20,24,60,0.06)] bg-white shadow-[0_12px_28px_rgba(20,24,60,0.12)]">
                     {addableStaffs.map((staff) => {
                       const chipCls = OCCUPATION_CHIP[staff.occupation] ?? "";
                       return (
                         <button
                           key={staff.id}
                           onClick={() => handleAddStaff(staff.id)}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-[#f7f7fb]"
                         >
                           <span
                             className={`rounded border px-1 py-0.5 text-[10px] font-bold ${chipCls}`}

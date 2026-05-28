@@ -21,7 +21,7 @@ const navItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
   { href: "/patients", label: "患者一覧", icon: Users },
   { href: "/schedule", label: "スケジュール", icon: CalendarDays },
-  { href: "/records", label: "実施記録", icon: ClipboardList },
+  { href: "/records", label: "実施記録一覧", icon: ClipboardList },
   { href: "/settings/staffs", label: "スタッフ管理", icon: Settings },
 ];
 
