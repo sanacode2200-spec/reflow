@@ -16,7 +16,7 @@ export default async function NewPatientPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-xl font-bold text-[#111]">患者登録</h1>
+      <h1 className="text-foreground mb-6 text-xl font-bold">患者登録</h1>
       <PatientWizard tenantId={tenantId} staffs={staffList} />
     </div>
   );

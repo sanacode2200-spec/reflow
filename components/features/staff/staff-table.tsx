@@ -38,6 +38,8 @@ type Props = {
 };
 
 export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }: Props) {
+  "use no memo";
+
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [createOpen, setCreateOpen] = useState(false);
@@ -63,7 +65,9 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
       accessorKey: "staff_code",
       header: "ID",
       cell: ({ getValue }) => (
-        <span className="font-mono text-sm text-[#888]">{(getValue() as string) ?? "—"}</span>
+        <span className="text-muted-foreground font-mono text-sm">
+          {(getValue() as string) ?? "—"}
+        </span>
       ),
     },
     {
@@ -71,8 +75,8 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
       header: "氏名",
       cell: ({ row }) => (
         <div>
-          <p className="font-medium text-[#111]">{row.original.name}</p>
-          <p className="text-xs text-[#888]">{row.original.name_kana}</p>
+          <p className="text-foreground font-medium">{row.original.name}</p>
+          <p className="text-muted-foreground text-xs">{row.original.name_kana}</p>
         </div>
       ),
     },
@@ -80,7 +84,7 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
       accessorKey: "occupation",
       header: "職種",
       cell: ({ getValue }) => (
-        <span className="rounded bg-[#f5f5f5] px-2 py-0.5 text-xs font-medium text-[#888]">
+        <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs font-medium">
           {occupationLabel[getValue() as string] ?? (getValue() as string)}
         </span>
       ),
@@ -91,9 +95,7 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
       cell: ({ getValue }) => (
         <span
           className={`rounded px-2 py-0.5 text-xs font-medium ${
-            getValue() === "admin"
-              ? "bg-[rgba(99,102,241,0.10)] text-[#6366f1]"
-              : "bg-[#f5f5f5] text-[#888]"
+            getValue() === "admin" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
           }`}
         >
           {roleLabel[getValue() as string] ?? (getValue() as string)}
@@ -104,7 +106,7 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
       accessorKey: "max_units_per_day",
       header: "1日上限",
       cell: ({ getValue }) => (
-        <span className="text-sm text-[#888]">{getValue() as number}単位</span>
+        <span className="text-muted-foreground text-sm">{getValue() as number}単位</span>
       ),
     },
     {
@@ -119,14 +121,14 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
               <>
                 <button
                   onClick={() => setEditTarget(s)}
-                  className="rounded p-1.5 text-[#888] hover:bg-[#f5f5f5] hover:text-[#111]"
+                  className="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1.5"
                   title="編集"
                 >
                   <Pencil size={14} />
                 </button>
                 <button
                   onClick={() => setResetTarget(s)}
-                  className="rounded p-1.5 text-[#888] hover:bg-[#f5f5f5] hover:text-[#111]"
+                  className="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1.5"
                   title="パスワードリセット"
                 >
                   <KeyRound size={14} />
@@ -134,7 +136,7 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
                 {!isMe && (
                   <button
                     onClick={() => setArchiveTarget(s)}
-                    className="rounded p-1.5 text-[#888] hover:bg-red-50 hover:text-red-500"
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1.5"
                     title="アーカイブ"
                   >
                     <Archive size={14} />
@@ -160,11 +162,11 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
   return (
     <>
       <div className="mb-3 flex items-center justify-end gap-3">
-        <span className="text-sm text-[#8a8fa3]">{staffs.length}名</span>
+        <span className="text-muted-foreground text-sm">{staffs.length}名</span>
         {isAdmin && (
           <Button
             onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 rounded-full bg-[#6366f1] shadow-[0_8px_18px_rgba(99,102,241,0.3)] hover:bg-[#4f52e0]"
+            className="flex items-center gap-1.5 rounded-full shadow-[0_8px_18px_rgba(99,102,241,0.3)]"
           >
             <Plus size={14} />
             スタッフ登録
@@ -176,11 +178,11 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
         <table className="w-full text-sm">
           <thead>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-[#eaeaea]">
+              <tr key={hg.id} className="border-border border-b">
                 {hg.headers.map((h) => (
                   <th
                     key={h.id}
-                    className="px-4 py-3 text-left text-xs font-medium text-[#888] first:pl-5"
+                    className="text-muted-foreground px-4 py-3 text-left text-xs font-medium first:pl-5"
                   >
                     {flexRender(h.column.columnDef.header, h.getContext())}
                   </th>
@@ -190,10 +192,7 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className="border-b border-[#eaeaea] last:border-0 hover:bg-[#fafafa]"
-              >
+              <tr key={row.id} className="border-border hover:bg-muted/45 border-b last:border-0">
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-4 py-3 first:pl-5">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -203,7 +202,10 @@ export default function StaffTable({ staffs, tenantId, currentStaffId, isAdmin }
             ))}
             {staffs.length === 0 && (
               <tr>
-                <td colSpan={columns.length} className="px-5 py-8 text-center text-sm text-[#888]">
+                <td
+                  colSpan={columns.length}
+                  className="text-muted-foreground px-5 py-8 text-center text-sm"
+                >
                   スタッフが登録されていません
                 </td>
               </tr>

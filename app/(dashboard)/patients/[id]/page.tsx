@@ -82,11 +82,11 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center gap-3">
-        <Link href="/patients" className="text-[#888] hover:text-[#111]">
+        <Link href="/patients" className="text-muted-foreground hover:text-foreground">
           <ChevronLeft size={18} />
         </Link>
-        <h1 className="text-xl font-bold text-[#111]">{patient.name_kanji}</h1>
-        <span className="rounded bg-[#f5f5f5] px-2 py-0.5 text-xs text-[#888]">
+        <h1 className="text-foreground text-xl font-bold">{patient.name_kanji}</h1>
+        <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs">
           {patient.patient_code}
         </span>
         {patient.deleted_at && (
@@ -95,8 +95,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
         <div className="ml-auto flex items-center gap-2">
           <Link
             href={`/records?patient_id=${patient.id}`}
-            className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-[#5a5e72] transition-colors hover:opacity-80"
-            style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(20,24,60,0.06)" }}
+            className="border-border bg-card/70 text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
           >
             <ClipboardList size={14} />
             実施記録
@@ -120,7 +119,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
         {additionAlert.initial && (
-          <div className="flex items-center gap-2 rounded-lg bg-[rgba(99,102,241,0.10)] px-4 py-3 text-sm text-[#6366f1]">
+          <div className="bg-primary/10 text-primary flex items-center gap-2 rounded-lg px-4 py-3 text-sm">
             <CheckCircle size={16} />
             <strong>初期加算対象</strong>（起算日から
             {differenceInDays(parseISO(patient.rehab_start_date), parseISO(patient.onset_date))}
@@ -128,7 +127,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
         {additionAlert.early && (
-          <div className="flex items-center gap-2 rounded-lg bg-[#f0fdf4] px-4 py-3 text-sm text-green-700">
+          <div className="flex items-center gap-2 rounded-lg bg-green-500/10 px-4 py-3 text-sm text-green-700 dark:text-green-300">
             <CheckCircle size={16} />
             <strong>早期加算対象</strong>
           </div>
@@ -139,14 +138,14 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
       <div className="grid gap-4 md:grid-cols-2">
         {sections.map((section) => (
           <div key={section.title} className="glass-card p-5">
-            <h2 className="mb-3 text-xs font-semibold tracking-wide text-[#8a8fa3]">
+            <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wide">
               {section.title}
             </h2>
             <dl className="space-y-2.5">
               {section.rows.map(([label, value]) => (
                 <div key={label} className="flex text-sm">
-                  <dt className="w-32 shrink-0 text-[#8a8fa3]">{label}</dt>
-                  <dd className="font-medium text-[#1d1f2b]">{value}</dd>
+                  <dt className="text-muted-foreground w-32 shrink-0">{label}</dt>
+                  <dd className="text-foreground font-medium">{value}</dd>
                 </div>
               ))}
             </dl>

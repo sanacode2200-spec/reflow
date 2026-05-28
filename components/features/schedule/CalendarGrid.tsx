@@ -15,6 +15,10 @@ import {
 import EventBlock from "./EventBlock";
 
 const DAY_NAMES_JP = ["月", "火", "水", "木", "金", "土", "日"] as const;
+
+function fmtMin(m: number): string {
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
 const SAT_MIN = 13 * 60;
 
 const TIME_COL_W = 52;
@@ -198,22 +202,62 @@ function DroppableColumn({
         }}
       />
       {/* 選択ハイライト */}
-      {selActive && selHeightPx > 0 && (
-        <div
-          style={{
-            position: "absolute",
-            top: selTopPx,
-            height: selHeightPx,
-            left: 2,
-            right: 2,
-            background: "rgba(14,165,233,0.18)",
-            border: "1.5px solid rgba(14,165,233,0.6)",
-            borderRadius: 4,
-            pointerEvents: "none",
-            zIndex: 6,
-          }}
-        />
-      )}
+      {selActive &&
+        selHeightPx > 0 &&
+        (() => {
+          const sMin = Math.min(selection.startMin, selection.endMin);
+          const eMin = Math.max(selection.startMin, selection.endMin);
+          return (
+            <div
+              style={{
+                position: "absolute",
+                top: selTopPx,
+                height: selHeightPx,
+                left: 2,
+                right: 2,
+                background: "rgba(14,165,233,0.18)",
+                border: "1.5px solid rgba(14,165,233,0.6)",
+                borderRadius: 4,
+                pointerEvents: "none",
+                zIndex: 6,
+                overflow: "hidden",
+              }}
+            >
+              <span
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  left: 3,
+                  fontSize: 9,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  color: "rgb(3,105,161)",
+                  fontFamily: "var(--font-mono)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {fmtMin(sMin)}
+              </span>
+              {selHeightPx >= 28 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    bottom: 2,
+                    left: 3,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    color: "rgb(3,105,161)",
+                    fontFamily: "var(--font-mono)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {fmtMin(eMin)}
+                </span>
+              )}
+            </div>
+          );
+        })()}
       {children}
     </div>
   );

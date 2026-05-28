@@ -119,8 +119,8 @@ export default function RecordsClient({
       <div className="flex h-full flex-col overflow-hidden p-6 print:p-0">
         <div className="no-print mb-5 flex shrink-0 items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1d1f2b]">実施記録一覧</h1>
-            <p className="mt-1 text-sm text-[#8a8fa3]">
+            <h1 className="text-foreground text-2xl font-bold tracking-tight">実施記録一覧</h1>
+            <p className="text-muted-foreground mt-1 text-sm">
               患者を1人に絞り込み、期間を指定して記録を表示します
             </p>
           </div>
@@ -128,7 +128,7 @@ export default function RecordsClient({
             type="button"
             onClick={() => window.print()}
             disabled={!hasDisplayed || records.length === 0}
-            className="rounded-full bg-[#6366f1] shadow-[0_8px_18px_rgba(99,102,241,0.28)] hover:bg-[#4f52e0]"
+            className="rounded-full shadow-[0_8px_18px_rgba(99,102,241,0.28)]"
           >
             <Printer size={15} />
             印刷
@@ -192,7 +192,7 @@ export default function RecordsClient({
                 <div className="relative">
                   <Search
                     size={14}
-                    className="absolute top-1/2 left-2.5 -translate-y-1/2 text-[#8a8fa3]"
+                    className="text-muted-foreground absolute top-1/2 left-2.5 -translate-y-1/2"
                   />
                   <Input
                     value={keyword}
@@ -203,16 +203,16 @@ export default function RecordsClient({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[rgba(20,24,60,0.06)] bg-white/55">
-                <div className="flex items-center justify-between border-b border-[rgba(20,24,60,0.06)] px-3 py-2">
-                  <span className="text-xs font-medium text-[#8a8fa3]">
+              <div className="border-border bg-card/55 rounded-xl border">
+                <div className="border-border flex items-center justify-between border-b px-3 py-2">
+                  <span className="text-muted-foreground text-xs font-medium">
                     患者候補 {candidatePatients.length}名
                   </span>
                   {selectedPatient && (
                     <button
                       type="button"
                       onClick={() => setSelectedPatientId("")}
-                      className="text-xs text-[#8a8fa3] hover:text-[#1d1f2b]"
+                      className="text-muted-foreground hover:text-foreground text-xs"
                     >
                       選択解除
                     </button>
@@ -220,7 +220,7 @@ export default function RecordsClient({
                 </div>
                 <div className="max-h-[34vh] overflow-y-auto p-1.5">
                   {candidatePatients.length === 0 ? (
-                    <p className="px-2 py-6 text-center text-sm text-[#8a8fa3]">
+                    <p className="text-muted-foreground px-2 py-6 text-center text-sm">
                       条件に一致する患者がいません
                     </p>
                   ) : (
@@ -232,21 +232,21 @@ export default function RecordsClient({
                           type="button"
                           onClick={() => setSelectedPatientId(p.id)}
                           className={`w-full rounded-lg px-2.5 py-2 text-left transition-colors ${
-                            selected ? "bg-[#6366f1] text-white" : "hover:bg-white"
+                            selected ? "bg-primary text-primary-foreground" : "hover:bg-card"
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-sm font-semibold">{p.name_kanji}</span>
                             <span
                               className={`shrink-0 text-[10px] ${
-                                selected ? "text-white/75" : "text-[#8a8fa3]"
+                                selected ? "text-primary-foreground/75" : "text-muted-foreground"
                               }`}
                             >
                               {p.patient_code}
                             </span>
                           </div>
                           <p
-                            className={`mt-0.5 text-xs ${selected ? "text-white/75" : "text-[#8a8fa3]"}`}
+                            className={`mt-0.5 text-xs ${selected ? "text-primary-foreground/75" : "text-muted-foreground"}`}
                           >
                             {DISEASE_LABEL[p.disease_category]} · {p.therapist_name}
                           </p>
@@ -261,7 +261,7 @@ export default function RecordsClient({
                 type="button"
                 onClick={displayRecords}
                 disabled={!selectedPatientId || !from || !to || isPending}
-                className="w-full bg-[#6366f1] hover:bg-[#4f52e0]"
+                className="w-full"
               >
                 {isPending ? "表示中..." : "表示"}
               </Button>
@@ -269,31 +269,33 @@ export default function RecordsClient({
           </aside>
 
           <section className="min-h-0 overflow-auto print:overflow-visible">
-            <div className="print-sheet mx-auto min-h-full bg-white text-[#1d1f2b] shadow-[0_10px_30px_rgba(20,24,60,0.06),0_0_0_1px_rgba(20,24,60,0.04)]">
+            <div className="print-sheet bg-card text-card-foreground mx-auto min-h-full shadow-[0_10px_30px_rgba(20,24,60,0.06),0_0_0_1px_rgba(20,24,60,0.04)]">
               {!hasDisplayed ? (
                 <div className="flex min-h-[520px] items-center justify-center p-10 text-center">
                   <div>
-                    <p className="text-sm font-medium text-[#1d1f2b]">表示条件を指定してください</p>
-                    <p className="mt-2 text-sm text-[#8a8fa3]">
+                    <p className="text-foreground text-sm font-medium">
+                      表示条件を指定してください
+                    </p>
+                    <p className="text-muted-foreground mt-2 text-sm">
                       左側で患者を1人選び、期間を指定して「表示」を押すと印刷用の一覧が出ます。
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="record-print p-6">
-                  <div className="mb-5 flex items-start justify-between gap-4 border-b border-[#d9dce8] pb-4">
+                  <div className="border-border mb-5 flex items-start justify-between gap-4 border-b pb-4">
                     <div>
-                      <p className="text-xs text-[#6b7280]">実施記録一覧</p>
+                      <p className="text-muted-foreground text-xs">実施記録一覧</p>
                       <h2 className="mt-1 text-xl font-bold tracking-tight">
                         {selectedPatient?.name_kanji ?? "患者未選択"}
                       </h2>
                       {selectedPatient && (
-                        <p className="mt-1 text-xs text-[#6b7280]">
+                        <p className="text-muted-foreground mt-1 text-xs">
                           患者ID {selectedPatient.patient_code} · {selectedPatient.name_kana}
                         </p>
                       )}
                     </div>
-                    <div className="text-right text-xs leading-5 text-[#4b5563]">
+                    <div className="text-muted-foreground text-right text-xs leading-5">
                       <p>
                         期間: {compactDate(from)} - {compactDate(to)}
                       </p>
@@ -307,7 +309,7 @@ export default function RecordsClient({
                   </div>
 
                   {records.length === 0 ? (
-                    <div className="rounded-lg border border-[#d9dce8] py-16 text-center text-sm text-[#6b7280]">
+                    <div className="border-border text-muted-foreground rounded-lg border py-16 text-center text-sm">
                       指定期間の記録はありません。
                     </div>
                   ) : (
@@ -315,7 +317,7 @@ export default function RecordsClient({
                       {records.map((record) => (
                         <article
                           key={record.id}
-                          className="record-item rounded-lg border border-[#d9dce8] bg-white p-2.5"
+                          className="record-item border-border bg-card rounded-lg border p-2.5"
                           onDoubleClick={() => {
                             if (record.scheduleId) {
                               setPanelScheduleId(record.scheduleId);
@@ -327,16 +329,16 @@ export default function RecordsClient({
                             <p className="font-semibold tabular-nums">
                               {compactDate(record.sessionDate)}
                             </p>
-                            <p className="text-[#4b5563] tabular-nums">
+                            <p className="text-muted-foreground tabular-nums">
                               {record.actualStartTime && record.actualEndTime
                                 ? `${record.actualStartTime}-${record.actualEndTime}`
                                 : "-"}
                             </p>
-                            <p className="truncate font-medium text-[#1f2937]">
+                            <p className="text-foreground truncate font-medium">
                               {record.therapistName}
                             </p>
                             <p className="text-right font-semibold">{record.units ?? "-"}単位</p>
-                            <p className="text-right text-[#4b5563]">
+                            <p className="text-muted-foreground text-right">
                               {STATUS_LABEL[record.status]}
                             </p>
                           </div>
@@ -348,7 +350,7 @@ export default function RecordsClient({
                             <PrintLine label="P" value={record.soapPlan} />
                           </div>
 
-                          <div className="mt-1.5 flex items-center gap-3 border-t border-[#eef0f6] pt-1.5 text-[10px] text-[#6b7280]">
+                          <div className="border-border text-muted-foreground mt-1.5 flex items-center gap-3 border-t pt-1.5 text-[10px]">
                             <span>離床: {record.isAmbulatory ? "可" : "不可"}</span>
                             <span className="truncate">
                               加算:{" "}
@@ -465,8 +467,8 @@ export default function RecordsClient({
 function PrintLine({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="record-line flex min-w-0 gap-1">
-      <span className="shrink-0 font-bold text-[#6366f1]">{label}</span>
-      <span className="record-line-value text-[#1f2937]">{value?.trim() || "-"}</span>
+      <span className="text-primary shrink-0 font-bold">{label}</span>
+      <span className="record-line-value text-foreground">{value?.trim() || "-"}</span>
     </div>
   );
 }

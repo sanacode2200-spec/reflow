@@ -1,13 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { schedules, patients, staffs, sessions } from "@/lib/db/schema";
+import { schedules, patients, staffs, sessions, reminders } from "@/lib/db/schema";
 import { eq, and, isNull, gte, lte, sum, count } from "drizzle-orm";
 import {
   startOfDay,
   endOfDay,
-  startOfMonth,
-  endOfMonth,
+  startOfWeek,
+  endOfWeek,
   differenceInDays,
   addDays,
   parseISO,
@@ -45,7 +45,8 @@ export type AlertRow = {
 
 export type DashboardStats = {
   todayCount: number;
-  monthlyUnits: number;
+  weeklyUnits: number;
+  weeklyUnitLimit: number;
   outpatientCount: number;
   inpatientCount: number;
   alertCount: number;
@@ -58,19 +59,26 @@ export type StatusCounts = {
   cancelled: number;
 };
 
+export type ReminderRow = {
+  id: string;
+  title: string;
+  reminder_at: Date;
+};
+
 export async function getDashboardData(tenantId: string): Promise<{
   stats: DashboardStats;
   statusCounts: StatusCounts;
   todaySchedules: TodayScheduleRow[];
   alerts: AlertRow[];
+  todayReminders: ReminderRow[];
 }> {
   const { user } = await requireTenantAccess(tenantId);
 
   const now = new Date();
   const dayStart = startOfDay(now);
   const dayEnd = endOfDay(now);
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
   // ログイン中スタッフを特定
   const currentStaff = await db.query.staffs.findFirst({
@@ -84,12 +92,13 @@ export async function getDashboardData(tenantId: string): Promise<{
 
   const [
     [todayCountRow],
-    [monthlyUnitsRow],
+    [weeklyUnitsRow],
     [outpatientCountRow],
     [inpatientCountRow],
     todaySchedules,
     allActivePatients,
     todayStatusRows,
+    todayReminderRows,
   ] = await Promise.all([
     db
       .select({ value: count() })
@@ -111,8 +120,8 @@ export async function getDashboardData(tenantId: string): Promise<{
           eq(sessions.tenant_id, tenantId),
           isNull(sessions.deleted_at),
           eq(sessions.status, "completed"),
-          gte(sessions.session_date, format(monthStart, "yyyy-MM-dd")),
-          lte(sessions.session_date, format(monthEnd, "yyyy-MM-dd")),
+          gte(sessions.session_date, format(weekStart, "yyyy-MM-dd")),
+          lte(sessions.session_date, format(weekEnd, "yyyy-MM-dd")),
           sessionStaffFilter
         )
       ),
@@ -188,6 +197,26 @@ export async function getDashboardData(tenantId: string): Promise<{
           staffFilter
         )
       ),
+    currentStaff
+      ? db
+          .select({
+            id: reminders.id,
+            title: reminders.title,
+            reminder_at: reminders.reminder_at,
+          })
+          .from(reminders)
+          .where(
+            and(
+              eq(reminders.tenant_id, tenantId),
+              eq(reminders.staff_id, currentStaff.id),
+              isNull(reminders.deleted_at),
+              gte(reminders.reminder_at, dayStart),
+              lte(reminders.reminder_at, dayEnd)
+            )
+          )
+          .orderBy(reminders.reminder_at)
+          .catch(() => [])
+      : Promise.resolve([]),
   ]);
 
   const alerts: AlertRow[] = [];
@@ -251,12 +280,14 @@ export async function getDashboardData(tenantId: string): Promise<{
   return {
     stats: {
       todayCount: todayCountRow?.value ?? 0,
-      monthlyUnits: Number(monthlyUnitsRow?.value ?? 0),
+      weeklyUnits: Number(weeklyUnitsRow?.value ?? 0),
+      weeklyUnitLimit: currentStaff?.max_units_per_week ?? 108,
       outpatientCount: outpatientCountRow?.value ?? 0,
       inpatientCount: inpatientCountRow?.value ?? 0,
       alertCount: alertPatientIds.size,
     },
     statusCounts,
+    todayReminders: todayReminderRows,
     todaySchedules: todaySchedules.map((s) => ({
       ...s,
       patient_name: s.patient_name ?? "",

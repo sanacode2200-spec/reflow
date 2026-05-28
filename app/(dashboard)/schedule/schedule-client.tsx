@@ -58,7 +58,7 @@ export default function ScheduleClient({
       <div className="mb-3 flex shrink-0 justify-end px-6">
         <Button
           onClick={openCreatePanel}
-          className="flex items-center gap-1.5 rounded-full bg-[#6366f1] shadow-[0_8px_18px_rgba(99,102,241,0.3)] hover:bg-[#4f52e0]"
+          className="flex items-center gap-1.5 rounded-full shadow-[0_8px_18px_rgba(99,102,241,0.3)]"
         >
           新規予約
         </Button>
@@ -81,7 +81,7 @@ export default function ScheduleClient({
       </div>
 
       <div className="md:hidden">
-        <p className="p-4 text-sm text-[#888]">スケジュールはPC画面でご確認ください。</p>
+        <p className="text-muted-foreground p-4 text-sm">スケジュールはPC画面でご確認ください。</p>
       </div>
 
       <ScheduleCreatePanel

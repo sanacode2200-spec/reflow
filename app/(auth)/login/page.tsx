@@ -44,12 +44,12 @@ export default function LoginPage() {
         <div className="mb-8 text-center">
           <div
             className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-2xl text-base font-bold text-white"
-            style={{ background: "linear-gradient(135deg, #6366f1, #ec4899)" }}
+            style={{ background: "var(--brand-gradient)", boxShadow: "var(--brand-shadow)" }}
           >
             R
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1d1f2b]">ReFlow</h1>
-          <p className="mt-1 text-sm text-[#8a8fa3]">リハビリ管理システム</p>
+          <h1 className="text-foreground text-2xl font-bold tracking-tight">ReFlow</h1>
+          <p className="text-muted-foreground mt-1 text-sm">リハビリ管理システム</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -87,11 +87,7 @@ export default function LoginPage() {
             </p>
           )}
 
-          <Button
-            type="submit"
-            className="w-full rounded-full bg-[#6366f1] hover:bg-[#4f52e0]"
-            disabled={loading}
-          >
+          <Button type="submit" className="w-full rounded-full" disabled={loading}>
             {loading ? "ログイン中..." : "ログイン"}
           </Button>
         </form>

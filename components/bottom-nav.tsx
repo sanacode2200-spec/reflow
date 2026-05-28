@@ -17,7 +17,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed right-0 bottom-0 left-0 z-40 border-t border-[rgba(20,24,60,0.06)] bg-white/80 md:hidden"
+      className="border-border bg-card/80 fixed right-0 bottom-0 left-0 z-40 border-t md:hidden"
       style={{ backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
     >
       <div className="flex">
@@ -27,7 +27,7 @@ export default function BottomNav() {
             href={href}
             className={cn(
               "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-xs transition-colors",
-              pathname === href ? "text-[#6366f1]" : "text-[#8a8fa3]"
+              pathname === href ? "text-primary" : "text-muted-foreground"
             )}
           >
             <Icon size={20} />

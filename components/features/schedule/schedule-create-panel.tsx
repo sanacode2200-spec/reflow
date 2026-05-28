@@ -68,21 +68,23 @@ function MultiDatePicker({
   }, [viewMonth]);
 
   return (
-    <div className="rounded-xl border border-[rgba(20,24,60,0.06)] bg-white/70 p-3">
+    <div className="border-border bg-card/70 rounded-xl border p-3">
       {/* ヘッダー */}
       <div className="mb-2 flex items-center justify-between">
         <button
           type="button"
           onClick={() => setViewMonth((m) => subMonths(m, 1))}
-          className="rounded-lg p-1 text-[#8a8fa3] transition-colors hover:bg-white hover:text-[#1d1f2b]"
+          className="text-muted-foreground hover:bg-card hover:text-foreground rounded-lg p-1 transition-colors"
         >
           <ChevronLeft size={14} />
         </button>
-        <span className="text-xs font-medium text-[#111]">{format(viewMonth, "yyyy年M月")}</span>
+        <span className="text-foreground text-xs font-medium">
+          {format(viewMonth, "yyyy年M月")}
+        </span>
         <button
           type="button"
           onClick={() => setViewMonth((m) => addMonths(m, 1))}
-          className="rounded-lg p-1 text-[#8a8fa3] transition-colors hover:bg-white hover:text-[#1d1f2b]"
+          className="text-muted-foreground hover:bg-card hover:text-foreground rounded-lg p-1 transition-colors"
         >
           <ChevronRight size={14} />
         </button>
@@ -91,7 +93,7 @@ function MultiDatePicker({
       {/* 曜日ヘッダー */}
       <div className="mb-1 grid grid-cols-7 text-center">
         {["月", "火", "水", "木", "金", "土", "日"].map((d) => (
-          <div key={d} className="text-[10px] text-[#8a8fa3]">
+          <div key={d} className="text-muted-foreground text-[10px]">
             {d}
           </div>
         ))}
@@ -117,12 +119,12 @@ function MultiDatePicker({
               className={cn(
                 "flex aspect-square w-full items-center justify-center rounded text-[11px] font-medium transition-colors",
                 isBase
-                  ? "bg-[#1d1f2b] text-white"
+                  ? "bg-foreground text-background"
                   : isExtra
-                    ? "bg-[#6366f1] text-white"
+                    ? "bg-primary text-primary-foreground"
                     : isPast
-                      ? "cursor-not-allowed text-[#c9cbd6]"
-                      : "text-[#1d1f2b] hover:bg-white"
+                      ? "text-muted-foreground/50 cursor-not-allowed"
+                      : "text-foreground hover:bg-card"
               )}
             >
               {format(day, "d")}
@@ -137,13 +139,13 @@ function MultiDatePicker({
           {[...extraDates].sort().map((d) => (
             <span
               key={d}
-              className="flex items-center gap-1 rounded-full bg-[#6366f1]/10 px-2 py-0.5 text-[10px] text-[#6366f1]"
+              className="bg-primary/10 text-primary flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]"
             >
               {format(new Date(d + "T00:00:00"), "M/d")}
               <button
                 type="button"
                 onClick={() => onToggle(d)}
-                className="leading-none text-[#6366f1] hover:text-[#4f52e0]"
+                className="text-primary hover:text-primary/80 leading-none"
               >
                 ×
               </button>
@@ -297,14 +299,14 @@ export default function ScheduleCreatePanel({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l border-[rgba(20,24,60,0.06)] bg-[rgba(255,255,255,0.86)] shadow-[0_24px_60px_rgba(20,24,60,0.14)] backdrop-blur-xl"
+            className="border-border bg-popover/90 text-popover-foreground fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l shadow-[0_24px_60px_rgba(20,24,60,0.14)] backdrop-blur-xl"
           >
-            <div className="flex items-center justify-between border-b border-[rgba(20,24,60,0.06)] px-5 py-4">
+            <div className="border-border flex items-center justify-between border-b px-5 py-4">
               <div>
-                <p className="text-[11px] font-medium text-[#8a8fa3]">
+                <p className="text-muted-foreground text-[11px] font-medium">
                   {isEdit ? "スケジュール変更" : "新規スケジュール"}
                 </p>
-                <h2 className="mt-0.5 text-base font-semibold text-[#1d1f2b]">
+                <h2 className="text-foreground mt-0.5 text-base font-semibold">
                   {isEdit ? "予約を編集" : "予約を作成"}
                 </h2>
               </div>
@@ -313,7 +315,7 @@ export default function ScheduleCreatePanel({
                 variant="ghost"
                 size="icon-sm"
                 onClick={onClose}
-                className="text-[#8a8fa3] hover:text-[#1d1f2b]"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X size={18} />
               </Button>
@@ -341,9 +343,9 @@ export default function ScheduleCreatePanel({
                       onBlur={() => setTimeout(() => setShowList(false), 150)}
                     />
                     {showList && !patientId && (
-                      <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-[rgba(20,24,60,0.06)] bg-white shadow-[0_12px_28px_rgba(20,24,60,0.12)]">
+                      <div className="border-border bg-popover text-popover-foreground absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border shadow-[0_12px_28px_rgba(20,24,60,0.12)]">
                         {filtered.length === 0 ? (
-                          <div className="px-3 py-2 text-sm text-[#8a8fa3]">
+                          <div className="text-muted-foreground px-3 py-2 text-sm">
                             {patientSearch ? "見つかりません" : "氏名を入力してください"}
                           </div>
                         ) : (
@@ -351,7 +353,7 @@ export default function ScheduleCreatePanel({
                             <button
                               key={p.id}
                               type="button"
-                              className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-[#f7f7fb]"
+                              className="hover:bg-muted w-full px-3 py-2 text-left text-sm transition-colors"
                               onMouseDown={(e) => e.preventDefault()}
                               onClick={() => {
                                 setPatientId(p.id);
@@ -360,8 +362,10 @@ export default function ScheduleCreatePanel({
                                 setShowList(false);
                               }}
                             >
-                              <span className="font-medium text-[#1d1f2b]">{p.name_kanji}</span>
-                              <span className="ml-2 text-xs text-[#8a8fa3]">{p.name_kana}</span>
+                              <span className="text-foreground font-medium">{p.name_kanji}</span>
+                              <span className="text-muted-foreground ml-2 text-xs">
+                                {p.name_kana}
+                              </span>
                             </button>
                           ))
                         )}
@@ -428,7 +432,7 @@ export default function ScheduleCreatePanel({
                     onChange={(e) => setUnits(Number(e.target.value))}
                     required
                   />
-                  <p className="text-xs text-[#8a8fa3]">1単位=20分。患者1日上限6単位。</p>
+                  <p className="text-muted-foreground text-xs">1単位=20分。患者1日上限6単位。</p>
                 </div>
 
                 {/* メモ・伝達事項 */}
@@ -443,7 +447,9 @@ export default function ScheduleCreatePanel({
                     className="resize-none"
                   />
                   {comment.length > 400 && (
-                    <p className="text-right text-[10px] text-[#8a8fa3]">{comment.length}/500</p>
+                    <p className="text-muted-foreground text-right text-[10px]">
+                      {comment.length}/500
+                    </p>
                   )}
                 </div>
 
@@ -453,7 +459,7 @@ export default function ScheduleCreatePanel({
                     <div className="mb-1.5 flex items-center justify-between">
                       <Label>他の日にもコピー</Label>
                       {extraDates.size > 0 && (
-                        <span className="text-[10px] text-[#6366f1]">計 {totalCount} 件作成</span>
+                        <span className="text-primary text-[10px]">計 {totalCount} 件作成</span>
                       )}
                     </div>
                     {startStr ? (
@@ -463,26 +469,28 @@ export default function ScheduleCreatePanel({
                         onToggle={toggleExtraDate}
                       />
                     ) : (
-                      <p className="text-xs text-[#8a8fa3]">開始時刻を入力すると選択できます</p>
+                      <p className="text-muted-foreground text-xs">
+                        開始時刻を入力すると選択できます
+                      </p>
                     )}
                   </div>
                 )}
 
                 {error && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                  <div className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border px-3 py-2 text-sm">
                     {error}
                   </div>
                 )}
               </div>
 
-              <div className="flex gap-2 border-t border-[rgba(20,24,60,0.06)] bg-white/40 px-5 py-4">
+              <div className="border-border bg-card/40 flex gap-2 border-t px-5 py-4">
                 <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                   キャンセル
                 </Button>
                 <Button
                   type="submit"
                   disabled={isPending || !patientId || !therapistId || !startStr || !endStr}
-                  className="flex-1 bg-[#6366f1] shadow-[0_8px_18px_rgba(99,102,241,0.24)] hover:bg-[#4f52e0]"
+                  className="flex-1 shadow-[0_8px_18px_rgba(99,102,241,0.24)]"
                 >
                   {isPending
                     ? "保存中..."

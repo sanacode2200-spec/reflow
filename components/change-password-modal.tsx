@@ -64,8 +64,8 @@ export default function ChangePasswordModal({ open, onClose }: Props) {
 
         {done ? (
           <div className="py-4 text-center">
-            <p className="text-sm text-[#111]">パスワードを変更しました。</p>
-            <Button className="mt-4 bg-black hover:bg-[#111]" onClick={handleClose}>
+            <p className="text-foreground text-sm">パスワードを変更しました。</p>
+            <Button className="mt-4" onClick={handleClose}>
               閉じる
             </Button>
           </div>
@@ -114,7 +114,7 @@ export default function ChangePasswordModal({ open, onClose }: Props) {
               <Button type="button" variant="outline" onClick={handleClose}>
                 キャンセル
               </Button>
-              <Button type="submit" disabled={loading} className="bg-black hover:bg-[#111]">
+              <Button type="submit" disabled={loading}>
                 {loading ? "変更中..." : "パスワードを変更"}
               </Button>
             </DialogFooter>

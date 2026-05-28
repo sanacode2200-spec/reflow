@@ -86,25 +86,25 @@ export default function CopyDatePicker({ instance, schedules, onCancel, onConfir
       onClick={onCancel}
     >
       <div
-        className="w-76 rounded-xl bg-white p-5 shadow-2xl select-none"
+        className="bg-popover text-popover-foreground w-76 rounded-xl p-5 shadow-2xl select-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-sm font-semibold text-gray-800">複数の日付にコピー</h2>
+        <h2 className="text-foreground mb-4 text-sm font-semibold">複数の日付にコピー</h2>
 
         {/* 月ナビゲーション */}
         <div className="mb-3 flex items-center justify-between">
           <button
             onClick={() => setViewMonth((m) => subMonths(m, 1))}
-            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-gray-500 hover:bg-gray-100"
+            className="text-muted-foreground hover:bg-muted flex h-7 w-7 items-center justify-center rounded text-lg leading-none"
           >
             ‹
           </button>
-          <span className="text-sm font-medium text-gray-700">
+          <span className="text-foreground text-sm font-medium">
             {format(viewMonth, "yyyy年M月")}
           </span>
           <button
             onClick={() => setViewMonth((m) => addMonths(m, 1))}
-            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-gray-500 hover:bg-gray-100"
+            className="text-muted-foreground hover:bg-muted flex h-7 w-7 items-center justify-center rounded text-lg leading-none"
           >
             ›
           </button>
@@ -113,7 +113,7 @@ export default function CopyDatePicker({ instance, schedules, onCancel, onConfir
         {/* 曜日ヘッダー */}
         <div className="mb-1 grid grid-cols-7">
           {DAY_HEADERS.map((d) => (
-            <div key={d} className="py-1 text-center text-[10px] text-gray-400">
+            <div key={d} className="text-muted-foreground py-1 text-center text-[10px]">
               {d}
             </div>
           ))}
@@ -132,7 +132,7 @@ export default function CopyDatePicker({ instance, schedules, onCancel, onConfir
 
             let cellCls: string;
             if (isOrigin) {
-              cellCls = "bg-gray-100 text-gray-300 cursor-default";
+              cellCls = "bg-muted text-muted-foreground/50 cursor-default";
             } else if (isSelected && isConflict) {
               cellCls = "bg-amber-500 text-white font-semibold";
             } else if (isSelected) {
@@ -140,7 +140,7 @@ export default function CopyDatePicker({ instance, schedules, onCancel, onConfir
             } else if (isConflict) {
               cellCls = "border border-amber-400 text-amber-600 hover:bg-amber-50";
             } else {
-              cellCls = "hover:bg-gray-100 text-gray-700";
+              cellCls = "hover:bg-muted text-foreground";
             }
 
             return (
@@ -166,7 +166,7 @@ export default function CopyDatePicker({ instance, schedules, onCancel, onConfir
 
         {/* フッター */}
         <div className="mt-3 flex items-center justify-between">
-          <span className="text-xs text-gray-400">
+          <span className="text-muted-foreground text-xs">
             {(() => {
               if (selectedKeys.size === 0) return "日付を選択してください";
               const conflictCount = Array.from(selectedKeys).filter((k) =>
@@ -180,14 +180,14 @@ export default function CopyDatePicker({ instance, schedules, onCancel, onConfir
           <div className="flex gap-2">
             <button
               onClick={onCancel}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+              className="border-border text-muted-foreground hover:bg-muted hover:text-foreground rounded border px-3 py-1.5 text-sm"
             >
               キャンセル
             </button>
             <button
               onClick={handleConfirm}
               disabled={selectedKeys.size === 0}
-              className="rounded bg-sky-500 px-4 py-1.5 text-sm text-white transition-colors hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-40"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded px-4 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
               コピー
             </button>

@@ -1,34 +1,32 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter, Noto_Sans_JP, Zen_Maru_Gothic } from "next/font/google";
+import localFont from "next/font/local";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const notoSansJP = Noto_Sans_JP({
-  variable: "--font-noto-sans-jp",
-  subsets: ["latin"],
-  weight: ["300", "400", "600", "700"],
-  display: "swap",
-});
-
-const zenMaruGothic = Zen_Maru_Gothic({
-  variable: "--font-zen-maru",
-  subsets: ["latin"],
-  weight: ["500", "700"],
+const lineSeedJP = localFont({
+  src: [
+    {
+      path: "../public/fonts/line-seed-jp/LINESeedJP_OTF_Th.woff2",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/line-seed-jp/LINESeedJP_OTF_Rg.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/line-seed-jp/LINESeedJP_OTF_Bd.woff2",
+      weight: "700",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/line-seed-jp/LINESeedJP_OTF_Eb.woff2",
+      weight: "800",
+      style: "normal",
+    },
+  ],
+  variable: "--font-line-seed-jp",
   display: "swap",
 });
 
@@ -45,9 +43,12 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${notoSansJP.variable} ${zenMaruGothic.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${lineSeedJP.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

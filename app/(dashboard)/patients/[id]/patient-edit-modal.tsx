@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { updatePatient, type PatientRow, type PatientFormData } from "@/lib/actions/patient";
 import { checkAdditions } from "@/lib/rehab/additions";
 import {
@@ -18,63 +17,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Pencil, CheckCircle } from "lucide-react";
+import {
+  DISEASE_OPTIONS,
+  INSURANCE_OPTIONS,
+  ONSET_TYPE_OPTIONS,
+  patientFormSchema,
+  type PatientForm as Form,
+} from "@/lib/validators/patient";
 
-const optTherapistId = z.preprocess(
-  (v) => (v === "" ? null : v),
-  z.string().uuid().nullable().optional()
-);
-
-const schema = z
-  .object({
-    patient_code: z.string().min(1),
-    name_kanji: z.string().min(1),
-    name_kana: z.string().min(1),
-    birth_date: z.string().min(1),
-    gender: z.enum(["male", "female", "other"]),
-    patient_type: z.enum(["inpatient", "outpatient"]),
-    insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
-    main_diagnosis: z.string().min(1),
-    disease_category: z.enum([
-      "cerebrovascular",
-      "musculoskeletal",
-      "disuse_syndrome",
-      "cardiovascular",
-      "respiratory",
-    ]),
-    facility_grade: z.enum(["grade_1", "grade_2", "grade_3"]),
-    rehab_start_date: z.string().min(1),
-    onset_date: z.string().min(1),
-    onset_type: z.enum(["onset", "surgery", "acute_exacerbation"]),
-    pt_therapist_id: optTherapistId,
-    ot_therapist_id: optTherapistId,
-    st_therapist_id: optTherapistId,
-    is_nursing_care: z.boolean(),
-    medical_history: z.string().optional(),
-  })
-  .refine((d) => d.pt_therapist_id || d.ot_therapist_id || d.st_therapist_id, {
-    message: "いずれか1人以上選択してください",
-    path: ["pt_therapist_id"],
-  });
-
-type Form = z.infer<typeof schema>;
 type Staff = { id: string; name: string; occupation: string };
-const DISEASE_OPTIONS = [
-  { value: "cerebrovascular", label: "脳血管疾患等" },
-  { value: "musculoskeletal", label: "運動器" },
-  { value: "disuse_syndrome", label: "廃用症候群" },
-  { value: "cardiovascular", label: "心大血管" },
-  { value: "respiratory", label: "呼吸器" },
-];
-const INSURANCE_OPTIONS = [
-  { value: "medical", label: "医療保険" },
-  { value: "workers_comp", label: "労災保険" },
-  { value: "auto_liability", label: "自賠責保険" },
-];
-const ONSET_TYPE_OPTIONS = [
-  { value: "onset", label: "発症日" },
-  { value: "surgery", label: "手術日" },
-  { value: "acute_exacerbation", label: "急性増悪日" },
-];
+const selectClass =
+  "h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm transition-colors outline-none focus:ring-3 focus:ring-ring/50";
 
 export default function PatientEditModal({
   patient,
@@ -90,7 +43,7 @@ export default function PatientEditModal({
   const [serverError, setServerError] = useState<string | null>(null);
 
   const form = useForm<Form>({
-    resolver: zodResolver(schema) as Resolver<Form>,
+    resolver: zodResolver(patientFormSchema) as Resolver<Form>,
     defaultValues: {
       patient_code: patient.patient_code,
       name_kanji: patient.name_kanji,
@@ -113,8 +66,13 @@ export default function PatientEditModal({
     },
   });
 
-  const watchedOnset = form.watch("onset_date");
-  const watchedRehab = form.watch("rehab_start_date");
+  const watchedOnset = useWatch({ control: form.control, name: "onset_date" });
+  const watchedRehab = useWatch({ control: form.control, name: "rehab_start_date" });
+  const patientType = useWatch({ control: form.control, name: "patient_type" });
+  const therapistIds = useWatch({
+    control: form.control,
+    name: ["pt_therapist_id", "ot_therapist_id", "st_therapist_id"],
+  });
   const alert = watchedOnset && watchedRehab ? checkAdditions(watchedOnset, watchedRehab) : null;
 
   const handleSubmit = async (data: Form) => {
@@ -172,7 +130,7 @@ export default function PatientEditModal({
                   { value: "outpatient", label: "外来通院" },
                   { value: "inpatient", label: "入院中" },
                 ].map((o) => {
-                  const selected = form.watch("patient_type") === o.value;
+                  const selected = patientType === o.value;
                   return (
                     <button
                       key={o.value}
@@ -180,7 +138,7 @@ export default function PatientEditModal({
                       onClick={() =>
                         form.setValue("patient_type", o.value as "inpatient" | "outpatient")
                       }
-                      className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${selected ? "border-[#111] bg-[#111] text-white" : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111]"}`}
+                      className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground"}`}
                     >
                       {o.label}
                     </button>
@@ -191,10 +149,7 @@ export default function PatientEditModal({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>性別</Label>
-                <select
-                  {...form.register("gender")}
-                  className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
-                >
+                <select {...form.register("gender")} className={selectClass}>
                   <option value="male">男性</option>
                   <option value="female">女性</option>
                   <option value="other">その他</option>
@@ -202,10 +157,7 @@ export default function PatientEditModal({
               </div>
               <div className="space-y-1.5">
                 <Label>保険種別</Label>
-                <select
-                  {...form.register("insurance_type")}
-                  className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
-                >
+                <select {...form.register("insurance_type")} className={selectClass}>
                   {INSURANCE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
@@ -220,10 +172,7 @@ export default function PatientEditModal({
             </div>
             <div className="space-y-1.5">
               <Label>疾患別区分</Label>
-              <select
-                {...form.register("disease_category")}
-                className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
-              >
+              <select {...form.register("disease_category")} className={selectClass}>
                 {DISEASE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -238,10 +187,7 @@ export default function PatientEditModal({
               </div>
               <div className="space-y-1.5">
                 <Label>起算日の種別</Label>
-                <select
-                  {...form.register("onset_type")}
-                  className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
-                >
+                <select {...form.register("onset_type")} className={selectClass}>
                   {ONSET_TYPE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
@@ -257,25 +203,27 @@ export default function PatientEditModal({
             {alert && (alert.initial || alert.early) && (
               <div className="space-y-1">
                 {alert.initial && (
-                  <div className="flex items-center gap-2 rounded bg-[rgba(99,102,241,0.10)] px-3 py-2 text-xs text-[#6366f1]">
+                  <div className="bg-primary/10 text-primary flex items-center gap-2 rounded px-3 py-2 text-xs">
                     <CheckCircle size={12} />
                     <strong>初期加算対象</strong>
                   </div>
                 )}
                 {alert.early && (
-                  <div className="flex items-center gap-2 rounded bg-[#f0fdf4] px-3 py-2 text-xs text-green-700">
+                  <div className="flex items-center gap-2 rounded bg-green-500/10 px-3 py-2 text-xs text-green-700 dark:text-green-300">
                     <CheckCircle size={12} />
                     <strong>早期加算対象</strong>
                   </div>
                 )}
               </div>
             )}
-            <div className="space-y-3 rounded-lg border border-[#eaeaea] p-4">
-              <p className="text-sm font-medium text-[#111]">
+            <div className="border-border space-y-3 rounded-lg border p-4">
+              <p className="text-foreground text-sm font-medium">
                 主担当
-                <span className="ml-1.5 text-xs font-normal text-[#888]">（1人以上必須）</span>
+                <span className="text-muted-foreground ml-1.5 text-xs font-normal">
+                  （1人以上必須）
+                </span>
               </p>
-              {(["pt", "ot", "st"] as const).map((occ) => {
+              {(["pt", "ot", "st"] as const).map((occ, index) => {
                 const field = `${occ}_therapist_id` as
                   | "pt_therapist_id"
                   | "ot_therapist_id"
@@ -285,18 +233,18 @@ export default function PatientEditModal({
                   occ === "pt" ? form.formState.errors.pt_therapist_id?.message : undefined;
                 return (
                   <div key={occ} className="space-y-1.5">
-                    <label className="text-sm text-[#888]">
+                    <label className="text-muted-foreground text-sm">
                       <span className="text-[10px] font-bold tracking-wide uppercase">
                         {occ.toUpperCase()}
                       </span>{" "}
                       主担当
                     </label>
                     <select
-                      value={form.watch(field) ?? ""}
+                      value={therapistIds[index] ?? ""}
                       onChange={(e) =>
                         form.setValue(field, e.target.value, { shouldValidate: true })
                       }
-                      className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+                      className={selectClass}
                     >
                       <option value="">— なし —</option>
                       {filtered.map((s) => (
@@ -305,7 +253,7 @@ export default function PatientEditModal({
                         </option>
                       ))}
                     </select>
-                    {err && <p className="text-xs text-red-500">{err}</p>}
+                    {err && <p className="text-destructive text-xs">{err}</p>}
                   </div>
                 );
               })}
@@ -315,17 +263,17 @@ export default function PatientEditModal({
               <textarea
                 {...form.register("medical_history")}
                 rows={3}
-                className="w-full resize-none rounded-md border border-[#eaeaea] px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+                className="border-input focus:ring-ring/50 w-full resize-none rounded-lg border bg-transparent px-3 py-2 text-sm outline-none focus:ring-3"
               />
             </div>
             <div className="flex items-center gap-2">
               <input {...form.register("is_nursing_care")} id="edit-nursing" type="checkbox" />
-              <label htmlFor="edit-nursing" className="text-sm text-[#888]">
+              <label htmlFor="edit-nursing" className="text-muted-foreground text-sm">
                 要介護被保険者
               </label>
             </div>
             {serverError && (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border px-3 py-2 text-sm">
                 {serverError}
               </p>
             )}
@@ -333,11 +281,7 @@ export default function PatientEditModal({
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 キャンセル
               </Button>
-              <Button
-                type="submit"
-                disabled={form.formState.isSubmitting}
-                className="bg-black hover:bg-[#111]"
-              >
+              <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? "保存中..." : "保存"}
               </Button>
             </DialogFooter>

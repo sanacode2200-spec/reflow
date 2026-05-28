@@ -17,7 +17,7 @@ export default async function StaffsPage() {
   } catch {
     return (
       <div className="p-6">
-        <p className="text-sm text-[#888]">データの取得に失敗しました。</p>
+        <p className="text-muted-foreground text-sm">データの取得に失敗しました。</p>
       </div>
     );
   }
@@ -37,8 +37,8 @@ export default async function StaffsPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="shrink-0 px-6 pt-6 pb-4">
-        <h1 className="text-2xl font-bold tracking-tight text-[#1d1f2b]">スタッフ管理</h1>
-        <p className="mt-1 text-sm text-[#8a8fa3]">登録 {staffList.length} 名</p>
+        <h1 className="text-foreground text-2xl font-bold tracking-tight">スタッフ管理</h1>
+        <p className="text-muted-foreground mt-1 text-sm">登録 {staffList.length} 名</p>
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
         <StaffTable

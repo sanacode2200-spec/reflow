@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import ChangePasswordModal from "@/components/change-password-modal";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
@@ -52,13 +53,14 @@ export default function Sidebar({ staffName, staffCode }: Props) {
             <div
               className="flex h-8 w-8 items-center justify-center rounded-xl text-sm font-bold text-white"
               style={{
-                background: "linear-gradient(135deg, #6366f1, #ec4899)",
-                boxShadow: "0 8px 18px rgba(99,102,241,0.35)",
+                background: "var(--brand-gradient)",
+                boxShadow: "var(--brand-shadow)",
               }}
             >
               R
             </div>
-            <span className="text-lg font-bold tracking-tight text-[#1d1f2b]">ReFlow</span>
+            <span className="text-foreground text-lg font-bold tracking-tight">ReFlow</span>
+            <ThemeToggle className="ml-auto" />
           </div>
         </div>
 
@@ -72,11 +74,11 @@ export default function Sidebar({ staffName, staffCode }: Props) {
                 className={cn(
                   "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
                   active
-                    ? "bg-white/80 text-[#1d1f2b] shadow-[0_6px_18px_rgba(20,24,60,0.06),0_0_0_1px_rgba(20,24,60,0.04)]"
-                    : "text-[#8a8fa3] hover:bg-white/50 hover:text-[#1d1f2b]"
+                    ? "bg-card text-foreground shadow-[0_6px_18px_rgba(20,24,60,0.06),0_0_0_1px_rgba(20,24,60,0.04)]"
+                    : "text-muted-foreground hover:bg-card/60 hover:text-foreground"
                 )}
               >
-                <Icon size={16} className={active ? "text-[#6366f1]" : "text-[#8a8fa3]"} />
+                <Icon size={16} className={active ? "text-primary" : "text-muted-foreground"} />
                 {label}
               </Link>
             );
@@ -87,22 +89,22 @@ export default function Sidebar({ staffName, staffCode }: Props) {
         <div className="relative px-3 py-3">
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-sm transition-all duration-150 hover:bg-white/50"
+            className="hover:bg-card/60 flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-sm transition-all duration-150"
           >
             <div
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #6366f1, #ec4899)" }}
+              style={{ background: "var(--brand-gradient)" }}
             >
               {staffName.charAt(0)}
             </div>
             <div className="flex-1 text-left">
-              <p className="text-xs leading-tight font-medium text-[#1d1f2b]">{staffName}</p>
-              {staffCode && <p className="text-[10px] text-[#8a8fa3]">ID: {staffCode}</p>}
+              <p className="text-foreground text-xs leading-tight font-medium">{staffName}</p>
+              {staffCode && <p className="text-muted-foreground text-[10px]">ID: {staffCode}</p>}
             </div>
             <ChevronUp
               size={14}
               className={cn(
-                "text-[#8a8fa3] transition-transform",
+                "text-muted-foreground transition-transform",
                 menuOpen ? "rotate-0" : "rotate-180"
               )}
             />
@@ -110,7 +112,7 @@ export default function Sidebar({ staffName, staffCode }: Props) {
 
           {menuOpen && (
             <div
-              className="absolute right-3 bottom-full left-3 mb-1 overflow-hidden rounded-2xl border border-[rgba(20,24,60,0.06)] bg-white/90 py-1 shadow-[0_10px_30px_rgba(20,24,60,0.10)]"
+              className="border-border bg-popover/90 absolute right-3 bottom-full left-3 mb-1 overflow-hidden rounded-2xl border py-1 shadow-[0_10px_30px_rgba(20,24,60,0.10)]"
               style={{ backdropFilter: "blur(10px)" }}
             >
               <button
@@ -118,15 +120,15 @@ export default function Sidebar({ staffName, staffCode }: Props) {
                   setMenuOpen(false);
                   setChangePasswordOpen(true);
                 }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#8a8fa3] transition-colors hover:bg-[#6366f1]/8 hover:text-[#1d1f2b]"
+                className="text-muted-foreground hover:bg-primary/10 hover:text-foreground flex w-full items-center gap-2 px-4 py-2 text-sm transition-colors"
               >
                 <KeyRound size={14} />
                 パスワード変更
               </button>
-              <div className="my-1 border-t border-[rgba(20,24,60,0.06)]" />
+              <div className="border-border my-1 border-t" />
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#8a8fa3] transition-colors hover:bg-[#6366f1]/8 hover:text-[#1d1f2b]"
+                className="text-muted-foreground hover:bg-primary/10 hover:text-foreground flex w-full items-center gap-2 px-4 py-2 text-sm transition-colors"
               >
                 <LogOut size={14} />
                 ログアウト

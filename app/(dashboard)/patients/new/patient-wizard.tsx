@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, type UseFormReturn, type Resolver } from "react-hook-form";
+import { useForm, useWatch, type UseFormReturn, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { createPatient, type PatientFormData } from "@/lib/actions/patient";
 import { checkAdditions } from "@/lib/rehab/additions";
 import { differenceInYears, format, parseISO } from "date-fns";
@@ -12,45 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChevronRight, ChevronLeft, AlertTriangle, CheckCircle } from "lucide-react";
+import {
+  DISEASE_LABEL,
+  GENDER_OPTIONS,
+  INSURANCE_OPTIONS,
+  ONSET_TYPE_OPTIONS,
+  PATIENT_TYPE_OPTIONS,
+  patientFormSchema,
+  type PatientForm as Form,
+} from "@/lib/validators/patient";
 
-const optTherapistId = z.preprocess(
-  (v) => (v === "" ? null : v),
-  z.string().uuid().nullable().optional()
-);
-
-const schema = z
-  .object({
-    patient_code: z.string().min(1, "患者IDを入力してください"),
-    name_kanji: z.string().min(1, "氏名（漢字）を入力してください"),
-    name_kana: z.string().min(1, "氏名（カナ）を入力してください"),
-    birth_date: z.string().min(1, "生年月日を入力してください"),
-    gender: z.enum(["male", "female", "other"]),
-    patient_type: z.enum(["inpatient", "outpatient"]),
-    insurance_type: z.enum(["medical", "workers_comp", "auto_liability"]),
-    main_diagnosis: z.string().min(1, "主病名を入力してください"),
-    disease_category: z.enum([
-      "cerebrovascular",
-      "musculoskeletal",
-      "disuse_syndrome",
-      "cardiovascular",
-      "respiratory",
-    ]),
-    facility_grade: z.enum(["grade_1", "grade_2", "grade_3"]),
-    rehab_start_date: z.string().min(1, "リハビリ開始日を入力してください"),
-    onset_date: z.string().min(1, "起算日を入力してください"),
-    onset_type: z.enum(["onset", "surgery", "acute_exacerbation"]),
-    pt_therapist_id: optTherapistId,
-    ot_therapist_id: optTherapistId,
-    st_therapist_id: optTherapistId,
-    is_nursing_care: z.boolean().default(false),
-    medical_history: z.string().optional(),
-  })
-  .refine((d) => d.pt_therapist_id || d.ot_therapist_id || d.st_therapist_id, {
-    message: "いずれか1人以上選択してください",
-    path: ["pt_therapist_id"],
-  });
-
-type Form = z.infer<typeof schema>;
 type Staff = { id: string; name: string; occupation: string };
 type Props = { tenantId: string; staffs: Staff[] };
 
@@ -61,33 +31,8 @@ const stepFields: (keyof Form)[][] = [
   ["rehab_start_date", "onset_date", "onset_type"],
   [],
 ];
-
-const GENDER_OPTIONS = [
-  { value: "male", label: "男性" },
-  { value: "female", label: "女性" },
-  { value: "other", label: "その他" },
-];
-const PATIENT_TYPE_OPTIONS = [
-  { value: "outpatient", label: "外来通院" },
-  { value: "inpatient", label: "入院中" },
-];
-const INSURANCE_OPTIONS = [
-  { value: "medical", label: "医療保険" },
-  { value: "workers_comp", label: "労災保険" },
-  { value: "auto_liability", label: "自賠責保険" },
-];
-const ONSET_TYPE_OPTIONS = [
-  { value: "onset", label: "発症日" },
-  { value: "surgery", label: "手術日" },
-  { value: "acute_exacerbation", label: "急性増悪日" },
-];
-const DISEASE_LABEL: Record<string, string> = {
-  cerebrovascular: "脳血管疾患等",
-  musculoskeletal: "運動器",
-  disuse_syndrome: "廃用症候群",
-  cardiovascular: "心大血管",
-  respiratory: "呼吸器",
-};
+const selectClass =
+  "h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm transition-colors outline-none focus:ring-3 focus:ring-ring/50";
 
 export default function PatientWizard({ tenantId, staffs }: Props) {
   const router = useRouter();
@@ -95,7 +40,7 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
 
   const form = useForm<Form>({
-    resolver: zodResolver(schema) as Resolver<Form>,
+    resolver: zodResolver(patientFormSchema) as Resolver<Form>,
     defaultValues: {
       patient_code: "",
       name_kanji: "",
@@ -119,8 +64,8 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
     mode: "onChange",
   });
 
-  const watchedOnsetDate = form.watch("onset_date");
-  const watchedRehabStart = form.watch("rehab_start_date");
+  const watchedOnsetDate = useWatch({ control: form.control, name: "onset_date" });
+  const watchedRehabStart = useWatch({ control: form.control, name: "rehab_start_date" });
   const additionAlert =
     watchedOnsetDate && watchedRehabStart
       ? checkAdditions(watchedOnsetDate, watchedRehabStart)
@@ -165,23 +110,23 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
               <div
                 className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
                   i < step
-                    ? "bg-[#111] text-white"
+                    ? "bg-foreground text-background"
                     : i === step
-                      ? "bg-[#6366f1] text-white"
-                      : "bg-[#eaeaea] text-[#888]"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
                 }`}
               >
                 {i < step ? "✓" : i + 1}
               </div>
               <span
-                className={`mt-1 text-xs ${i === step ? "font-medium text-[#111]" : "text-[#888]"}`}
+                className={`mt-1 text-xs ${i === step ? "text-foreground font-medium" : "text-muted-foreground"}`}
               >
                 {title}
               </span>
             </div>
             {i < stepTitles.length - 1 && (
               <div
-                className={`mx-2 mb-4 flex-1 border-t-2 transition-colors ${i < step ? "border-[#111]" : "border-[#eaeaea]"}`}
+                className={`mx-2 mb-4 flex-1 border-t-2 transition-colors ${i < step ? "border-foreground" : "border-border"}`}
               />
             )}
           </div>
@@ -196,7 +141,7 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
           {step === 3 && <Step4 form={form} staffs={staffs} additionAlert={additionAlert} />}
 
           {serverError && (
-            <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+            <p className="border-destructive/20 bg-destructive/10 text-destructive mt-4 rounded-lg border px-3 py-2 text-sm">
               {serverError}
             </p>
           )}
@@ -213,16 +158,12 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
               </Button>
             )}
             {step < stepTitles.length - 1 ? (
-              <Button type="button" onClick={goNext} className="bg-black hover:bg-[#111]">
+              <Button type="button" onClick={goNext}>
                 次へ
                 <ChevronRight size={14} className="ml-1" />
               </Button>
             ) : (
-              <Button
-                type="submit"
-                disabled={form.formState.isSubmitting}
-                className="bg-black hover:bg-[#111]"
-              >
+              <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? "登録中..." : "登録する"}
               </Button>
             )}
@@ -235,7 +176,7 @@ export default function PatientWizard({ tenantId, staffs }: Props) {
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
-  return <p className="mt-1 text-xs text-red-500">{msg}</p>;
+  return <p className="text-destructive mt-1 text-xs">{msg}</p>;
 }
 
 function SelectField({
@@ -243,23 +184,20 @@ function SelectField({
   ...props
 }: { label: string } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select
-      {...props}
-      aria-label={props["aria-label"] ?? label}
-      className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
-    >
+    <select {...props} aria-label={props["aria-label"] ?? label} className={selectClass}>
       {props.children}
     </select>
   );
 }
 
 function Step1({ form }: { form: UseFormReturn<Form> }) {
-  const birthDate = form.watch("birth_date");
+  const birthDate = useWatch({ control: form.control, name: "birth_date" });
+  const patientType = useWatch({ control: form.control, name: "patient_type" });
   const age = birthDate ? differenceInYears(new Date(), parseISO(birthDate)) : null;
 
   return (
     <div className="space-y-4">
-      <h2 className="font-semibold text-[#111]">基本情報</h2>
+      <h2 className="text-foreground font-semibold">基本情報</h2>
       <div className="space-y-1.5">
         <Label>患者ID</Label>
         <Input {...form.register("patient_code")} placeholder="例: P001" />
@@ -281,7 +219,7 @@ function Step1({ form }: { form: UseFormReturn<Form> }) {
         <div className="space-y-1.5">
           <Label>生年月日</Label>
           <Input {...form.register("birth_date")} type="date" />
-          {age !== null && <p className="text-xs text-[#888]">{age}歳</p>}
+          {age !== null && <p className="text-muted-foreground text-xs">{age}歳</p>}
           <FieldError msg={form.formState.errors.birth_date?.message} />
         </div>
         <div className="space-y-1.5">
@@ -299,7 +237,7 @@ function Step1({ form }: { form: UseFormReturn<Form> }) {
         <Label>入院 / 外来</Label>
         <div className="flex gap-2">
           {PATIENT_TYPE_OPTIONS.map((o) => {
-            const selected = form.watch("patient_type") === o.value;
+            const selected = patientType === o.value;
             return (
               <button
                 key={o.value}
@@ -311,8 +249,8 @@ function Step1({ form }: { form: UseFormReturn<Form> }) {
                 }
                 className={`flex-1 rounded-lg border py-2.5 text-sm font-medium transition-colors ${
                   selected
-                    ? "border-[#111] bg-[#111] text-white"
-                    : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111]"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground"
                 }`}
               >
                 {o.label}
@@ -328,7 +266,7 @@ function Step1({ form }: { form: UseFormReturn<Form> }) {
 function Step2({ form }: { form: UseFormReturn<Form> }) {
   return (
     <div className="space-y-4">
-      <h2 className="font-semibold text-[#111]">保険・診療</h2>
+      <h2 className="text-foreground font-semibold">保険・診療</h2>
       <div className="space-y-1.5">
         <Label>保険種別</Label>
         <SelectField label="保険種別" {...form.register("insurance_type")}>
@@ -357,7 +295,7 @@ function Step2({ form }: { form: UseFormReturn<Form> }) {
       </div>
       <div className="space-y-1.5">
         <Label>施設基準区分</Label>
-        <div className="rounded-md border border-[#eaeaea] bg-[#fafafa] px-3 py-2 text-sm text-[#888]">
+        <div className="border-border bg-muted text-muted-foreground rounded-lg border px-3 py-2 text-sm">
           運動器リハビリテーション料（II）（Phase1固定）
         </div>
       </div>
@@ -384,16 +322,12 @@ function TherapistSelect({
   return (
     <div className="space-y-1.5">
       <Label>
-        <span className="text-[10px] font-bold tracking-wide text-[#888] uppercase">
+        <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
           {occupation.toUpperCase()}
         </span>{" "}
         {label}
       </Label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
-      >
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={selectClass}>
         <option value="">— なし —</option>
         {filtered.map((s) => (
           <option key={s.id} value={s.id}>
@@ -401,7 +335,7 @@ function TherapistSelect({
           </option>
         ))}
       </select>
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-destructive text-xs">{error}</p>}
     </div>
   );
 }
@@ -416,10 +350,14 @@ function Step3({
   additionAlert: ReturnType<typeof checkAdditions> | null;
 }) {
   const ptError = form.formState.errors.pt_therapist_id?.message;
+  const therapistIds = useWatch({
+    control: form.control,
+    name: ["pt_therapist_id", "ot_therapist_id", "st_therapist_id"],
+  });
 
   return (
     <div className="space-y-4">
-      <h2 className="font-semibold text-[#111]">リハビリ情報</h2>
+      <h2 className="text-foreground font-semibold">リハビリ情報</h2>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label>リハビリ開始日</Label>
@@ -446,19 +384,19 @@ function Step3({
       {additionAlert && (
         <div className="space-y-2">
           {additionAlert.initial && (
-            <div className="flex items-center gap-2 rounded-lg bg-[rgba(99,102,241,0.10)] px-3 py-2 text-sm text-[#6366f1]">
+            <div className="bg-primary/10 text-primary flex items-center gap-2 rounded-lg px-3 py-2 text-sm">
               <CheckCircle size={14} />
               <strong>初期加算対象</strong>（起算日から{14 - additionAlert.initialDaysLeft}日目）
             </div>
           )}
           {additionAlert.early && (
-            <div className="flex items-center gap-2 rounded-lg bg-[#f0fdf4] px-3 py-2 text-sm text-green-700">
+            <div className="flex items-center gap-2 rounded-lg bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-300">
               <CheckCircle size={14} />
               <strong>早期加算対象</strong>（起算日から{30 - additionAlert.earlyDaysLeft}日目）
             </div>
           )}
           {!additionAlert.initial && !additionAlert.early && (
-            <div className="flex items-center gap-2 rounded-lg bg-[#fafafa] px-3 py-2 text-sm text-[#888]">
+            <div className="bg-muted text-muted-foreground flex items-center gap-2 rounded-lg px-3 py-2 text-sm">
               <AlertTriangle size={14} />
               初期加算・早期加算の対象外（起算日から{30 + additionAlert.earlyDaysLeft}日以上経過）
             </div>
@@ -466,16 +404,16 @@ function Step3({
         </div>
       )}
 
-      <div className="space-y-3 rounded-lg border border-[#eaeaea] p-4">
-        <p className="text-sm font-medium text-[#111]">
+      <div className="border-border space-y-3 rounded-lg border p-4">
+        <p className="text-foreground text-sm font-medium">
           主担当
-          <span className="ml-1.5 text-xs font-normal text-[#888]">（1人以上必須）</span>
+          <span className="text-muted-foreground ml-1.5 text-xs font-normal">（1人以上必須）</span>
         </p>
         <TherapistSelect
           label="主担当"
           occupation="pt"
           staffs={staffs}
-          value={form.watch("pt_therapist_id") ?? ""}
+          value={therapistIds[0] ?? ""}
           onChange={(v) => form.setValue("pt_therapist_id", v, { shouldValidate: true })}
           error={ptError}
         />
@@ -483,14 +421,14 @@ function Step3({
           label="主担当"
           occupation="ot"
           staffs={staffs}
-          value={form.watch("ot_therapist_id") ?? ""}
+          value={therapistIds[1] ?? ""}
           onChange={(v) => form.setValue("ot_therapist_id", v, { shouldValidate: true })}
         />
         <TherapistSelect
           label="主担当"
           occupation="st"
           staffs={staffs}
-          value={form.watch("st_therapist_id") ?? ""}
+          value={therapistIds[2] ?? ""}
           onChange={(v) => form.setValue("st_therapist_id", v, { shouldValidate: true })}
         />
       </div>
@@ -501,7 +439,7 @@ function Step3({
           {...form.register("medical_history")}
           rows={3}
           placeholder="既往歴や注意事項を入力..."
-          className="w-full resize-none rounded-md border border-[#eaeaea] px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+          className="border-input focus:ring-ring/50 w-full resize-none rounded-lg border bg-transparent px-3 py-2 text-sm outline-none focus:ring-3"
         />
       </div>
       <div className="flex items-center gap-2">
@@ -511,7 +449,7 @@ function Step3({
           type="checkbox"
           className="rounded"
         />
-        <label htmlFor="nursing" className="text-sm text-[#888]">
+        <label htmlFor="nursing" className="text-muted-foreground text-sm">
           要介護被保険者
         </label>
       </div>
@@ -562,25 +500,25 @@ function Step4({
 
   return (
     <div className="space-y-4">
-      <h2 className="font-semibold text-[#111]">確認</h2>
-      <dl className="divide-y divide-[#eaeaea] rounded-lg border border-[#eaeaea]">
+      <h2 className="text-foreground font-semibold">確認</h2>
+      <dl className="divide-border border-border divide-y rounded-lg border">
         {rows.map(([label, value]) => (
           <div key={label} className="flex px-4 py-2.5 text-sm">
-            <dt className="w-36 shrink-0 text-[#888]">{label}</dt>
-            <dd className="font-medium text-[#111]">{value}</dd>
+            <dt className="text-muted-foreground w-36 shrink-0">{label}</dt>
+            <dd className="text-foreground font-medium">{value}</dd>
           </div>
         ))}
       </dl>
       {additionAlert && (
         <div className="space-y-1.5">
           {additionAlert.initial && (
-            <div className="flex items-center gap-2 rounded-lg bg-[rgba(99,102,241,0.10)] px-3 py-2 text-sm text-[#6366f1]">
+            <div className="bg-primary/10 text-primary flex items-center gap-2 rounded-lg px-3 py-2 text-sm">
               <CheckCircle size={14} />
               <strong>初期加算対象</strong>
             </div>
           )}
           {additionAlert.early && (
-            <div className="flex items-center gap-2 rounded-lg bg-[#f0fdf4] px-3 py-2 text-sm text-green-700">
+            <div className="flex items-center gap-2 rounded-lg bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-300">
               <CheckCircle size={14} />
               <strong>早期加算対象</strong>
             </div>

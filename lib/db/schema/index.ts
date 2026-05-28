@@ -4,4 +4,5 @@ export * from "./staffs";
 export * from "./patients";
 export * from "./schedules";
 export * from "./sessions";
+export * from "./reminders";
 export * from "./audit-logs";

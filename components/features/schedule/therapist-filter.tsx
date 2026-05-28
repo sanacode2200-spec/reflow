@@ -13,8 +13,8 @@ const occupationLabel: Record<string, string> = { pt: "PT", ot: "OT", st: "ST" }
 
 const pillState = (active: boolean) =>
   active
-    ? "border-[#111] bg-[#111] text-white"
-    : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111] hover:text-[#111]";
+    ? "border-primary bg-primary text-primary-foreground"
+    : "border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground";
 
 export default function TherapistFilter({ staffs, currentStaffId, selectedId, onChange }: Props) {
   const sorted = [...staffs].sort((a, b) => {

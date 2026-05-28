@@ -137,7 +137,7 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-md border-[rgba(20,24,60,0.08)] bg-[rgba(255,255,255,0.92)] shadow-[0_24px_60px_rgba(20,24,60,0.14)] ring-0 backdrop-blur-xl">
+      <DialogContent className="border-border bg-popover/90 max-w-md shadow-[0_24px_60px_rgba(20,24,60,0.14)] ring-0 backdrop-blur-xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? "スタッフ編集" : "スタッフ登録"}</DialogTitle>
         </DialogHeader>
@@ -150,7 +150,7 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
               <Button type="button" variant="outline" onClick={handleClose}>
                 キャンセル
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="bg-black hover:bg-[#111]">
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "保存中..." : "保存"}
               </Button>
             </DialogFooter>
@@ -163,7 +163,7 @@ export default function StaffModal({ open, onClose, tenantId, staff }: Props) {
               <Button type="button" variant="outline" onClick={handleClose}>
                 キャンセル
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="bg-black hover:bg-[#111]">
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "登録中..." : "登録する"}
               </Button>
             </DialogFooter>
@@ -205,7 +205,7 @@ function FormFields({
           <Label>職種</Label>
           <select
             {...f.register("occupation")}
-            className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+            className="border-input focus:ring-ring/50 h-8 w-full rounded-lg border bg-transparent px-2.5 text-sm transition-colors outline-none focus:ring-3"
           >
             {occupationOptions.map((o) => (
               <option key={o.value} value={o.value}>
@@ -218,7 +218,7 @@ function FormFields({
           <Label>権限</Label>
           <select
             {...f.register("role")}
-            className="w-full rounded-md border border-[#eaeaea] bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#111] focus:outline-none"
+            className="border-input focus:ring-ring/50 h-8 w-full rounded-lg border bg-transparent px-2.5 text-sm transition-colors outline-none focus:ring-3"
           >
             {roleOptions.map((r) => (
               <option key={r.value} value={r.value}>
@@ -249,8 +249,8 @@ function FormFields({
       </div>
 
       {!isEdit && (
-        <div className="border-t border-[#eaeaea] pt-3">
-          <p className="mb-3 text-xs text-[#888]">ログイン情報</p>
+        <div className="border-border border-t pt-3">
+          <p className="text-muted-foreground mb-3 text-xs">ログイン情報</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>スタッフID（4桁）</Label>
@@ -294,12 +294,12 @@ function FormFields({
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
-  return <p className="text-xs text-red-500">{msg}</p>;
+  return <p className="text-destructive text-xs">{msg}</p>;
 }
 
 function ErrorMsg({ msg }: { msg: string }) {
   return (
-    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+    <p className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border px-3 py-2 text-sm">
       {msg}
     </p>
   );

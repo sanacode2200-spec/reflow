@@ -31,15 +31,15 @@ export default function SchedulePanel({ scheduleId, schedules, onClose }: Props)
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed top-0 right-0 z-50 flex h-full w-full max-w-sm flex-col border-l border-[#eaeaea] bg-white shadow-xl"
+            className="border-border bg-popover text-popover-foreground fixed top-0 right-0 z-50 flex h-full w-full max-w-sm flex-col border-l shadow-xl"
           >
-            <div className="flex items-center justify-between border-b border-[#eaeaea] px-5 py-4">
-              <h2 className="text-base font-semibold text-[#111]">
+            <div className="border-border flex items-center justify-between border-b px-5 py-4">
+              <h2 className="text-foreground text-base font-semibold">
                 {schedule ? schedule.patient_name : "予約詳細"}
               </h2>
               <button
                 onClick={onClose}
-                className="rounded p-1 text-[#888] transition-colors hover:text-[#111]"
+                className="text-muted-foreground hover:text-foreground rounded p-1 transition-colors"
               >
                 <X size={18} />
               </button>
@@ -48,16 +48,16 @@ export default function SchedulePanel({ scheduleId, schedules, onClose }: Props)
               {schedule ? (
                 <div className="space-y-3 text-sm">
                   <div>
-                    <span className="text-[#888]">患者</span>
-                    <p className="font-medium text-[#111]">{schedule.patient_name}</p>
+                    <span className="text-muted-foreground">患者</span>
+                    <p className="text-foreground font-medium">{schedule.patient_name}</p>
                   </div>
                   <div>
-                    <span className="text-[#888]">担当</span>
-                    <p className="font-medium text-[#111]">{schedule.therapist_name}</p>
+                    <span className="text-muted-foreground">担当</span>
+                    <p className="text-foreground font-medium">{schedule.therapist_name}</p>
                   </div>
                   <div>
-                    <span className="text-[#888]">時間</span>
-                    <p className="font-medium text-[#111]">
+                    <span className="text-muted-foreground">時間</span>
+                    <p className="text-foreground font-medium">
                       {schedule.start_at.toLocaleTimeString("ja", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -70,12 +70,12 @@ export default function SchedulePanel({ scheduleId, schedules, onClose }: Props)
                     </p>
                   </div>
                   <div>
-                    <span className="text-[#888]">単位数</span>
-                    <p className="font-medium text-[#111]">{schedule.units}単位</p>
+                    <span className="text-muted-foreground">単位数</span>
+                    <p className="text-foreground font-medium">{schedule.units}単位</p>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-[#888]">予約が見つかりません。</p>
+                <p className="text-muted-foreground text-sm">予約が見つかりません。</p>
               )}
             </div>
           </motion.aside>

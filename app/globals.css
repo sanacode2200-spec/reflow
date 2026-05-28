@@ -2,14 +2,16 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *, [data-theme="dark"] *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-line-seed-jp);
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  --font-heading: var(--font-line-seed-jp);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,8 +50,11 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
+:root,
+[data-theme="default"] {
   /* option-a.html Soft Glass × Friendly カラーパレット */
+  color-scheme: light;
+  --app-background: linear-gradient(160deg, #f6efe7 0%, #eee6ff 45%, #e6f0ff 100%);
   --background: oklch(0.985 0.004 278);
   --foreground: oklch(0.175 0.025 264); /* #1d1f2b */
   --card: oklch(1 0 0 / 0.78);
@@ -82,40 +87,53 @@
   --sidebar-accent-foreground: oklch(0.175 0.025 264);
   --sidebar-border: oklch(0.175 0.025 264 / 0.06);
   --sidebar-ring: oklch(0.585 0.24 278);
+  --glass-card-background: rgba(255, 255, 255, 0.78);
+  --glass-card-shadow: 0 10px 30px rgba(20, 24, 60, 0.06), 0 0 0 1px rgba(20, 24, 60, 0.04);
+  --brand-gradient: linear-gradient(135deg, #6366f1, #ec4899);
+  --brand-shadow: 0 8px 18px rgba(99, 102, 241, 0.35);
+  --subtle-surface: rgba(255, 255, 255, 0.55);
 }
 
+[data-theme="dark"],
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.585 0.24 278);
+  color-scheme: dark;
+  --app-background: linear-gradient(160deg, #121420 0%, #19152b 48%, #10202b 100%);
+  --background: oklch(0.18 0.025 264);
+  --foreground: oklch(0.96 0.01 260);
+  --card: oklch(0.23 0.025 264 / 0.78);
+  --card-foreground: oklch(0.96 0.01 260);
+  --popover: oklch(0.24 0.025 264);
+  --popover-foreground: oklch(0.96 0.01 260);
+  --primary: oklch(0.7 0.18 278);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.585 0.24 278);
+  --secondary: oklch(0.28 0.025 264);
+  --secondary-foreground: oklch(0.96 0.01 260);
+  --muted: oklch(0.28 0.025 264);
+  --muted-foreground: oklch(0.74 0.025 264);
+  --accent: oklch(0.3 0.04 278);
+  --accent-foreground: oklch(0.96 0.01 260);
+  --destructive: oklch(0.68 0.2 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.7 0.18 278);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.585 0.24 278);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.585 0.24 278);
+  --sidebar: oklch(0.18 0.025 264 / 0);
+  --sidebar-foreground: oklch(0.96 0.01 260);
+  --sidebar-primary: oklch(0.7 0.18 278);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.26 0.03 264);
+  --sidebar-accent-foreground: oklch(0.96 0.01 260);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.7 0.18 278);
+  --glass-card-background: rgba(28, 31, 47, 0.78);
+  --glass-card-shadow: 0 14px 34px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --brand-gradient: linear-gradient(135deg, #818cf8, #f472b6);
+  --brand-shadow: 0 8px 20px rgba(129, 140, 248, 0.26);
+  --subtle-surface: rgba(28, 31, 47, 0.58);
 }
 
 @layer base {
@@ -124,9 +142,8 @@
   }
   body {
     @apply text-foreground;
-    font-family:
-      var(--font-zen-maru, var(--font-inter)), var(--font-noto-sans-jp), system-ui, sans-serif;
-    background: linear-gradient(160deg, #f6efe7 0%, #eee6ff 45%, #e6f0ff 100%);
+    font-family: var(--font-line-seed-jp), system-ui, sans-serif;
+    background: var(--app-background);
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -138,12 +155,10 @@
 
 @layer utilities {
   .glass-card {
-    background: rgba(255, 255, 255, 0.78);
+    background: var(--glass-card-background);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    box-shadow:
-      0 10px 30px rgba(20, 24, 60, 0.06),
-      0 0 0 1px rgba(20, 24, 60, 0.04);
+    box-shadow: var(--glass-card-shadow);
     border-radius: 1.5rem;
   }
 }

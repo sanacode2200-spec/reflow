@@ -46,8 +46,8 @@ const diseaseCategoryLabel: Record<string, string> = {
 };
 const patientTypeLabel = { inpatient: "入院中", outpatient: "外来" };
 const patientTypeStyle = {
-  inpatient: "bg-[rgba(99,102,241,0.10)] text-[#6366f1]",
-  outpatient: "bg-[#f5f5f5] text-[#888]",
+  inpatient: "bg-primary/10 text-primary",
+  outpatient: "bg-muted text-muted-foreground",
 };
 
 type Staff = { id: string; name: string; occupation: string };
@@ -59,15 +59,17 @@ const OCCUPATION_LABEL: Record<string, string> = { pt: "PT", ot: "OT", st: "ST" 
 const FILTER_COLUMNS = new Set<FilterKey>(["patient_type", "therapist_name", "disease_category"]);
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-  if (!sorted) return <ChevronsUpDown size={11} className="text-[#ccc]" />;
+  if (!sorted) return <ChevronsUpDown size={11} className="text-muted-foreground/50" />;
   return sorted === "asc" ? (
-    <ChevronUp size={11} className="text-[#111]" />
+    <ChevronUp size={11} className="text-foreground" />
   ) : (
-    <ChevronDown size={11} className="text-[#111]" />
+    <ChevronDown size={11} className="text-foreground" />
   );
 }
 
 export default function PatientsClient({ patients: initial, tenantId, staffs }: Props) {
+  "use no memo";
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -132,7 +134,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
       header: "ID",
       enableSorting: false,
       cell: ({ getValue }) => (
-        <span className="font-mono text-xs text-[#888]">{getValue() as string}</span>
+        <span className="text-muted-foreground font-mono text-xs">{getValue() as string}</span>
       ),
     },
     {
@@ -141,8 +143,8 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
       enableSorting: true,
       cell: ({ row }) => (
         <div>
-          <p className="font-medium text-[#111]">{row.original.name_kanji}</p>
-          <p className="text-xs text-[#888]">{row.original.name_kana}</p>
+          <p className="text-foreground font-medium">{row.original.name_kanji}</p>
+          <p className="text-muted-foreground text-xs">{row.original.name_kana}</p>
         </div>
       ),
     },
@@ -151,7 +153,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
       header: "年齢",
       enableSorting: true,
       cell: ({ getValue }) => (
-        <span className="text-sm text-[#888]">
+        <span className="text-muted-foreground text-sm">
           {differenceInYears(new Date(), parseISO(getValue() as string))}歳
         </span>
       ),
@@ -173,14 +175,16 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
       accessorKey: "therapist_name",
       header: "主担当",
       enableSorting: false,
-      cell: ({ getValue }) => <span className="text-sm text-[#888]">{getValue() as string}</span>,
+      cell: ({ getValue }) => (
+        <span className="text-muted-foreground text-sm">{getValue() as string}</span>
+      ),
     },
     {
       accessorKey: "disease_category",
       header: "疾患区分",
       enableSorting: false,
       cell: ({ getValue }) => (
-        <span className="text-sm text-[#888]">
+        <span className="text-muted-foreground text-sm">
           {diseaseCategoryLabel[getValue() as string] ?? (getValue() as string)}
         </span>
       ),
@@ -190,7 +194,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
       header: "保険",
       enableSorting: false,
       cell: ({ getValue }) => (
-        <span className="rounded bg-[#f5f5f5] px-2 py-0.5 text-xs text-[#888]">
+        <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs">
           {insuranceLabel[getValue() as keyof typeof insuranceLabel]}
         </span>
       ),
@@ -207,7 +211,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
                 e.stopPropagation();
                 await restorePatient(row.original.id, tenantId);
               }}
-              className="rounded p-1.5 text-[#888] hover:bg-[#f5f5f5] hover:text-[#6366f1]"
+              className="text-muted-foreground hover:bg-muted hover:text-primary rounded p-1.5"
               title="復帰"
             >
               <RotateCcw size={14} />
@@ -218,13 +222,13 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
                 e.stopPropagation();
                 setArchiveTarget(row.original);
               }}
-              className="rounded p-1.5 text-[#888] hover:bg-red-50 hover:text-red-500"
+              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1.5"
               title="アーカイブ"
             >
               <Archive size={14} />
             </button>
           )}
-          <ChevronRight size={14} className="text-[#eaeaea]" />
+          <ChevronRight size={14} className="text-border" />
         </div>
       ),
     },
@@ -275,11 +279,11 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
           e.stopPropagation();
           onClick();
         }}
-        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-[#fafafa] ${
-          active ? "font-medium text-[#111]" : "text-[#555]"
+        className={`hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+          active ? "text-foreground font-medium" : "text-muted-foreground"
         }`}
       >
-        <Check size={12} className={active ? "text-[#6366f1] opacity-100" : "opacity-0"} />
+        <Check size={12} className={active ? "text-primary opacity-100" : "opacity-0"} />
         {children}
       </button>
     );
@@ -377,7 +381,10 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
     <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative min-w-[200px] flex-1">
-          <Search size={14} className="absolute top-1/2 left-3 -translate-y-1/2 text-[#888]" />
+          <Search
+            size={14}
+            className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2"
+          />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -390,21 +397,21 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
           onClick={() => setShowArchived((v) => !v)}
           className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
             showArchived
-              ? "border-[#111] bg-[#111] text-white"
-              : "border-[#eaeaea] bg-white text-[#888] hover:border-[#111]"
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground"
           }`}
         >
           {showArchived ? "アーカイブ表示中" : "アーカイブ"}
         </button>
 
-        <p className="text-sm text-[#888]">{filtered.length}名</p>
+        <p className="text-muted-foreground text-sm">{filtered.length}名</p>
       </div>
 
       <div className="glass-card overflow-x-auto" style={{ padding: 0 }}>
         <table className="w-full text-sm">
           <thead ref={theadRef}>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-[#eaeaea]">
+              <tr key={hg.id} className="border-border border-b">
                 {hg.headers.map((h) => {
                   const colId = h.column.id as FilterKey;
                   const isFilterable = FILTER_COLUMNS.has(colId);
@@ -420,7 +427,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
                       >
                         <span
                           className={`flex items-center gap-1 ${
-                            label ? "text-[#6366f1]" : "text-[#888] hover:text-[#111]"
+                            label ? "text-primary" : "text-muted-foreground hover:text-foreground"
                           }`}
                         >
                           {flexRender(h.column.columnDef.header, h.getContext())}
@@ -437,8 +444,10 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
                   return (
                     <th
                       key={h.id}
-                      className={`px-4 py-3 text-left text-xs font-medium text-[#888] first:pl-5 ${
-                        h.column.getCanSort() ? "cursor-pointer select-none hover:text-[#111]" : ""
+                      className={`text-muted-foreground px-4 py-3 text-left text-xs font-medium first:pl-5 ${
+                        h.column.getCanSort()
+                          ? "hover:text-foreground cursor-pointer select-none"
+                          : ""
                       }`}
                       onClick={h.column.getToggleSortingHandler()}
                     >
@@ -456,7 +465,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className="cursor-pointer border-b border-[#eaeaea] last:border-0 hover:bg-[#fafafa]"
+                className="border-border hover:bg-muted/45 cursor-pointer border-b last:border-0"
               >
                 {row.getVisibleCells().map((cell) => (
                   <td
@@ -475,7 +484,10 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={columns.length} className="px-5 py-10 text-center text-sm text-[#888]">
+                <td
+                  colSpan={columns.length}
+                  className="text-muted-foreground px-5 py-10 text-center text-sm"
+                >
                   {search || hasFilter
                     ? "条件に一致する患者が見つかりません"
                     : "患者が登録されていません"}
@@ -498,7 +510,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
               left: dropdownPos.left,
               zIndex: 9999,
             }}
-            className="min-w-[130px] overflow-hidden rounded-lg border border-[#eaeaea] bg-white shadow-lg"
+            className="border-border bg-popover text-popover-foreground min-w-[130px] overflow-hidden rounded-lg border shadow-lg"
           >
             {renderDropdownContent()}
           </div>,

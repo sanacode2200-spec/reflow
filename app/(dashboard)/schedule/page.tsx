@@ -15,7 +15,9 @@ export default async function SchedulePage() {
   } catch {
     return (
       <div className="p-6">
-        <p className="text-sm text-[#888]">データの取得に失敗しました。再読み込みしてください。</p>
+        <p className="text-muted-foreground text-sm">
+          データの取得に失敗しました。再読み込みしてください。
+        </p>
       </div>
     );
   }
@@ -35,8 +37,8 @@ export default async function SchedulePage() {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <div className="shrink-0 px-6 pt-6 pb-3">
-        <h1 className="text-2xl font-bold tracking-tight text-[#1d1f2b]">スケジュール</h1>
-        <p className="mt-1 text-sm text-[#8a8fa3]">週表示 · 1単位 = 20分</p>
+        <h1 className="text-foreground text-2xl font-bold tracking-tight">スケジュール</h1>
+        <p className="text-muted-foreground mt-1 text-sm">週表示 · 1単位 = 20分</p>
       </div>
       <div className="min-h-0 flex-1">
         <ScheduleClient

@@ -66,17 +66,17 @@ export default function ResetPasswordModal({ open, onClose, tenantId, staff }: P
 
         {done ? (
           <div className="py-4 text-center">
-            <p className="text-sm text-[#111]">
+            <p className="text-foreground text-sm">
               <strong>{staff?.name}</strong> のパスワードをリセットしました。
             </p>
-            <Button className="mt-4 bg-black hover:bg-[#111]" onClick={handleClose}>
+            <Button className="mt-4" onClick={handleClose}>
               閉じる
             </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <p className="text-sm text-[#888]">
-              <strong className="text-[#111]">{staff?.name}</strong>（ID: {staff?.staff_code}
+            <p className="text-muted-foreground text-sm">
+              <strong className="text-foreground">{staff?.name}</strong>（ID: {staff?.staff_code}
               ）の新しいパスワードを設定します。
             </p>
 
@@ -103,7 +103,7 @@ export default function ResetPasswordModal({ open, onClose, tenantId, staff }: P
             </div>
 
             {error && (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border px-3 py-2 text-sm">
                 {error}
               </p>
             )}
@@ -112,7 +112,7 @@ export default function ResetPasswordModal({ open, onClose, tenantId, staff }: P
               <Button type="button" variant="outline" onClick={handleClose}>
                 キャンセル
               </Button>
-              <Button type="submit" disabled={loading} className="bg-black hover:bg-[#111]">
+              <Button type="submit" disabled={loading}>
                 {loading ? "設定中..." : "パスワードを設定"}
               </Button>
             </DialogFooter>
