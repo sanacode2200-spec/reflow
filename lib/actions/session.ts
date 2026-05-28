@@ -251,6 +251,14 @@ export async function upsertSession(input: unknown) {
     });
   }
 
+  if (parsed.units) {
+    const newEndAt = new Date(schedule.start_at.getTime() + parsed.units * 20 * 60 * 1000);
+    await db
+      .update(schedules)
+      .set({ end_at: newEndAt, units: parsed.units, updated_at: now })
+      .where(and(eq(schedules.id, parsed.scheduleId), eq(schedules.tenant_id, parsed.tenantId)));
+  }
+
   revalidatePath("/schedule");
   revalidatePath("/records");
 }

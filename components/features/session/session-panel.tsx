@@ -32,25 +32,36 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_COLOR: Record<string, { bg: string; fg: string; dot: string }> = {
-  scheduled: { bg: "rgba(20,24,60,0.06)", fg: "#5a5e72", dot: "#8a8fa3" },
+  scheduled: { bg: "var(--muted)", fg: "var(--muted-foreground)", dot: "var(--muted-foreground)" },
   draft: { bg: "rgba(245,158,11,0.14)", fg: "#b45309", dot: "#f59e0b" },
   completed: { bg: "rgba(34,197,94,0.12)", fg: "#15803d", dot: "#22c55e" },
 };
 
 const D = {
-  ink: "#1d1f2b",
-  ink2: "#5a5e72",
-  ink3: "#8a8fa3",
-  accent: "#6366f1",
-  accentSoft: "rgba(99,102,241,0.12)",
+  ink: "var(--foreground)",
+  ink2: "var(--muted-foreground)",
+  ink3: "var(--muted-foreground)",
+  accent: "var(--primary)",
+  accentFg: "var(--primary-foreground)",
+  accentSoft: "color-mix(in oklch, var(--primary) 12%, transparent)",
   warn: "#f59e0b",
   warnSoft: "rgba(245,158,11,0.14)",
-  divider: "rgba(20,24,60,0.06)",
+  divider: "var(--border)",
+  card: "var(--glass-card-background)",
+  cardShadow: "var(--glass-card-shadow)",
+  subtle: "var(--subtle-surface)",
+  muted: "var(--muted)",
 };
 
 function timeToMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);
   return (h ?? 0) * 60 + (m ?? 0);
+}
+
+function minutesToTime(totalMin: number): string {
+  const h = Math.floor(totalMin / 60) % 24;
+  const m = totalMin % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 function buildCopyText(params: {
@@ -119,12 +130,12 @@ function SoapBox({
   return (
     <div
       className="flex flex-col gap-2 rounded-2xl p-3"
-      style={{ background: "rgba(20,24,60,0.025)", minHeight: 90 }}
+      style={{ background: D.subtle, minHeight: 90 }}
     >
       <div className="flex items-center gap-2">
         <div
           className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
-          style={{ background: D.accent, fontFamily: "var(--font-geist-mono, monospace)" }}
+          style={{ background: D.accent, fontFamily: "var(--font-mono)" }}
         >
           {letter}
         </div>
@@ -225,6 +236,11 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
     if (diffMin > 0) setUnits(calcUnitsFromMinutes(diffMin));
   };
 
+  const recalcEndTime = (start: string, newUnits: number) => {
+    if (!start) return;
+    setEndTime(minutesToTime(timeToMinutes(start) + newUnits * 20));
+  };
+
   const toggleAddition = (key: string) => {
     setAdditions((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
   };
@@ -302,7 +318,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 backdrop-blur-[2px]"
-            style={{ background: "rgba(20,24,60,0.18)" }}
+            style={{ background: "color-mix(in oklch, var(--foreground) 18%, transparent)" }}
             onClick={onClose}
           />
           <motion.aside
@@ -313,8 +329,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
             className="fixed top-0 right-0 z-50 flex h-full w-full max-w-[1280px] flex-col"
             style={{
-              background:
-                "linear-gradient(160deg, rgba(247,243,238,0.99) 0%, rgba(241,236,255,0.99) 45%, rgba(236,243,255,0.99) 100%)",
+              background: "var(--app-background)",
               backdropFilter: "blur(20px)",
               WebkitBackdropFilter: "blur(20px)",
               borderLeft: `1px solid ${D.divider}`,
@@ -351,7 +366,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                   onClick={handleCopy}
                   className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:opacity-80"
                   style={{
-                    background: "rgba(255,255,255,0.7)",
+                    background: D.subtle,
                     border: `1px solid ${D.divider}`,
                     color: D.ink2,
                   }}
@@ -361,7 +376,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                 </button>
                 <button
                   onClick={onClose}
-                  className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-black/5"
+                  className="hover:bg-muted flex h-9 w-9 items-center justify-center rounded-full transition-colors"
                   style={{ color: D.ink3 }}
                 >
                   <X size={18} />
@@ -389,8 +404,8 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                     <div
                       className="flex shrink-0 items-center gap-3 rounded-3xl p-4"
                       style={{
-                        background: "rgba(255,255,255,0.78)",
-                        boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+                        background: D.card,
+                        boxShadow: D.cardShadow,
                         backdropFilter: "blur(10px)",
                       }}
                     >
@@ -406,7 +421,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                         </p>
                         <p
                           className="text-base font-bold"
-                          style={{ fontFamily: "var(--font-geist-mono, monospace)" }}
+                          style={{ fontFamily: "var(--font-mono)" }}
                         >
                           {format(new Date(data.scheduleStartAt), "M月d日")}{" "}
                           <span style={{ color: D.ink2 }}>
@@ -433,8 +448,8 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                   <div
                     className="grid shrink-0 grid-cols-1 gap-4 rounded-3xl p-5 sm:grid-cols-[minmax(280px,1fr)_minmax(150px,auto)] xl:grid-cols-[minmax(280px,1fr)_minmax(150px,auto)_minmax(220px,auto)]"
                     style={{
-                      background: "rgba(255,255,255,0.78)",
-                      boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+                      background: D.card,
+                      boxShadow: D.cardShadow,
                       backdropFilter: "blur(10px)",
                     }}
                   >
@@ -449,7 +464,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
                         <div
                           className="min-w-0 rounded-xl px-3 py-2"
-                          style={{ background: "rgba(20,24,60,0.04)" }}
+                          style={{ background: D.subtle }}
                         >
                           <input
                             type="time"
@@ -460,7 +475,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                             }}
                             className="w-full bg-transparent text-sm font-bold focus:outline-none"
                             style={{
-                              fontFamily: "var(--font-geist-mono, monospace)",
+                              fontFamily: "var(--font-mono)",
                               color: D.ink,
                             }}
                           />
@@ -468,7 +483,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                         <span style={{ color: D.ink3, fontSize: 14 }}>〜</span>
                         <div
                           className="min-w-0 rounded-xl px-3 py-2"
-                          style={{ background: "rgba(20,24,60,0.04)" }}
+                          style={{ background: D.subtle }}
                         >
                           <input
                             type="time"
@@ -479,7 +494,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                             }}
                             className="w-full bg-transparent text-sm font-bold focus:outline-none"
                             style={{
-                              fontFamily: "var(--font-geist-mono, monospace)",
+                              fontFamily: "var(--font-mono)",
                               color: D.ink,
                             }}
                           />
@@ -498,12 +513,16 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                       <div className="flex min-w-0 items-center gap-2">
                         <div
                           className="flex items-center rounded-xl"
-                          style={{ background: "rgba(20,24,60,0.04)" }}
+                          style={{ background: D.subtle }}
                         >
                           <button
                             type="button"
-                            onClick={() => setUnits((v) => Math.max(1, v - 1))}
-                            className="flex h-9 w-9 items-center justify-center rounded-l-xl text-base font-bold transition-colors hover:bg-black/5"
+                            onClick={() => {
+                              const next = Math.max(1, units - 1);
+                              setUnits(next);
+                              recalcEndTime(startTime, next);
+                            }}
+                            className="hover:bg-muted flex h-9 w-9 items-center justify-center rounded-l-xl text-base font-bold transition-colors"
                             style={{ color: D.ink2 }}
                           >
                             −
@@ -511,7 +530,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                           <span
                             className="min-w-[28px] text-center text-base font-bold"
                             style={{
-                              fontFamily: "var(--font-geist-mono, monospace)",
+                              fontFamily: "var(--font-mono)",
                               color: D.ink,
                             }}
                           >
@@ -519,8 +538,12 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                           </span>
                           <button
                             type="button"
-                            onClick={() => setUnits((v) => Math.min(9, v + 1))}
-                            className="flex h-9 w-9 items-center justify-center rounded-r-xl text-base font-bold transition-colors hover:bg-black/5"
+                            onClick={() => {
+                              const next = Math.min(9, units + 1);
+                              setUnits(next);
+                              recalcEndTime(startTime, next);
+                            }}
+                            className="hover:bg-muted flex h-9 w-9 items-center justify-center rounded-r-xl text-base font-bold transition-colors"
                             style={{ color: D.ink2 }}
                           >
                             ＋
@@ -542,7 +565,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                       </label>
                       <div
                         className="grid w-full grid-cols-2 gap-1 rounded-xl p-1"
-                        style={{ background: "rgba(20,24,60,0.05)" }}
+                        style={{ background: D.subtle }}
                       >
                         {(["あり", "なし（減算）"] as const).map((label) => {
                           const val = label === "あり";
@@ -556,7 +579,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                               style={
                                 active
                                   ? {
-                                      background: "#fff",
+                                      background: "var(--card)",
                                       color: D.ink,
                                       boxShadow: "0 2px 6px rgba(20,24,60,0.08)",
                                     }
@@ -575,8 +598,8 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                   <div
                     className="flex flex-1 flex-col rounded-3xl p-4"
                     style={{
-                      background: "rgba(255,255,255,0.78)",
-                      boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+                      background: D.card,
+                      boxShadow: D.cardShadow,
                       backdropFilter: "blur(10px)",
                       minHeight: 260,
                     }}
@@ -647,8 +670,8 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                   <div
                     className="shrink-0 rounded-3xl p-4"
                     style={{
-                      background: "rgba(255,255,255,0.78)",
-                      boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+                      background: D.card,
+                      boxShadow: D.cardShadow,
                       backdropFilter: "blur(10px)",
                     }}
                   >
@@ -670,10 +693,10 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                               active
                                 ? {
                                     background: D.accent,
-                                    color: "#fff",
+                                    color: D.accentFg,
                                     boxShadow: "0 6px 14px rgba(99,102,241,0.25)",
                                   }
-                                : { background: "rgba(20,24,60,0.04)", color: D.ink2 }
+                                : { background: D.subtle, color: D.ink2 }
                             }
                           >
                             {active && <Check size={11} />}
@@ -691,8 +714,8 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                   <div
                     className="flex flex-1 flex-col rounded-3xl p-4"
                     style={{
-                      background: "rgba(255,255,255,0.78)",
-                      boxShadow: "0 10px 30px rgba(20,24,60,0.06), 0 0 0 1px rgba(20,24,60,0.04)",
+                      background: D.card,
+                      boxShadow: D.cardShadow,
                       backdropFilter: "blur(10px)",
                       minHeight: 0,
                     }}
@@ -703,8 +726,8 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                     <div
                       className="flex-1 overflow-y-auto rounded-2xl p-3 text-xs leading-relaxed"
                       style={{
-                        background: "rgba(20,24,60,0.03)",
-                        fontFamily: "var(--font-geist-mono, monospace)",
+                        background: D.subtle,
+                        fontFamily: "var(--font-mono)",
                         color: D.ink2,
                         whiteSpace: "pre-wrap",
                         minHeight: 0,
@@ -716,7 +739,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                       onClick={handleCopy}
                       className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full py-2.5 text-sm font-semibold transition-colors hover:opacity-80"
                       style={{
-                        background: "rgba(255,255,255,0.7)",
+                        background: D.subtle,
                         border: `1px solid ${D.divider}`,
                         color: D.ink2,
                       }}
@@ -728,7 +751,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
 
                   {/* エラー */}
                   {saveError && (
-                    <p className="shrink-0 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+                    <p className="border-destructive/20 bg-destructive/10 text-destructive shrink-0 rounded-2xl border px-4 py-2 text-sm">
                       {saveError}
                     </p>
                   )}
@@ -741,7 +764,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                       onClick={() => handleSave("draft")}
                       className="flex-1 rounded-2xl py-3.5 text-sm font-semibold transition-colors hover:opacity-80 disabled:opacity-50"
                       style={{
-                        background: "rgba(255,255,255,0.7)",
+                        background: D.subtle,
                         border: `1px solid ${D.divider}`,
                         color: D.ink2,
                       }}
@@ -756,7 +779,7 @@ export default function SessionPanel({ scheduleId, sessionId, tenantId, onClose,
                       className="flex flex-[1.4] items-center justify-center gap-1.5 rounded-2xl py-3.5 text-sm font-semibold transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                       style={{
                         background: D.accent,
-                        color: "#fff",
+                        color: D.accentFg,
                         boxShadow: "0 8px 18px rgba(99,102,241,0.3)",
                       }}
                     >

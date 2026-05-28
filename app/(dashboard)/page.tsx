@@ -8,15 +8,8 @@ import {
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import Link from "next/link";
-import {
-  Calendar,
-  Users,
-  Zap,
-  AlertTriangle,
-  Clock,
-  ChevronRight,
-  CheckCircle,
-} from "lucide-react";
+import ReminderCard from "@/components/features/dashboard/reminder-card";
+import { Calendar, Users, Bell, Clock, ChevronRight, CheckCircle, Sparkles } from "lucide-react";
 
 // ---- KPIカード ----
 function StatCard({
@@ -37,27 +30,53 @@ function StatCard({
   iconBg?: string;
 }) {
   return (
-    <div className={`glass-card p-5 ${accent ? "ring-1 ring-[#fecdd3]/70" : ""}`}>
+    <div className={`glass-card p-5 ${accent ? "ring-primary/20 ring-1" : ""}`}>
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-medium text-[#8a8fa3]">{label}</span>
-        <span
-          className="rounded-xl p-1.5"
-          style={
-            accent
-              ? { background: "rgba(248,113,113,0.10)", color: "#f87171" }
-              : { background: iconBg, color: iconColor }
-          }
-        >
+        <span className="text-muted-foreground text-xs font-medium">{label}</span>
+        <span className="rounded-xl p-1.5" style={{ background: iconBg, color: iconColor }}>
           <Icon size={14} />
         </span>
       </div>
       <div className="flex items-end gap-1">
         <span
-          className={`text-3xl font-bold tracking-tight ${accent && value > 0 ? "text-[#f87171]" : "text-[#1d1f2b]"}`}
+          className={`text-3xl font-bold tracking-tight ${accent && value > 0 ? "text-primary" : "text-foreground"}`}
         >
           {value}
         </span>
-        <span className="mb-0.5 text-sm text-[#8a8fa3]">{unit}</span>
+        <span className="text-muted-foreground mb-0.5 text-sm">{unit}</span>
+      </div>
+    </div>
+  );
+}
+
+// ---- 週間単位数カード ----
+function WeeklyUnitsCard({ units, limit }: { units: number; limit: number }) {
+  const percent = limit > 0 ? Math.min(100, Math.round((units / limit) * 100)) : 0;
+  return (
+    <div className="glass-card p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-muted-foreground text-xs font-medium">今週の単位数</span>
+        <span className="rounded-xl bg-sky-400/14 p-1.5 text-sky-500">
+          <Clock size={14} />
+        </span>
+      </div>
+      <div className="flex items-end gap-1">
+        <span className="text-foreground text-3xl font-bold tracking-tight">{units}</span>
+        <span className="text-muted-foreground mb-0.5 text-sm">単位</span>
+      </div>
+      <div className="mt-4">
+        <div className="bg-muted h-2 overflow-hidden rounded-full">
+          <div
+            className="to-primary h-full rounded-full bg-gradient-to-r from-sky-400 transition-[width]"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <div className="text-muted-foreground mt-2 flex items-center justify-between text-[10px]">
+          <span>月-日</span>
+          <span>
+            上限 {limit} 単位 · {percent}%
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -76,7 +95,7 @@ function PatientStatCard({
   return (
     <div className="glass-card p-5">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-medium text-[#8a8fa3]">担当患者</span>
+        <span className="text-muted-foreground text-xs font-medium">担当患者</span>
         <span
           className="rounded-xl p-1.5"
           style={{ background: "rgba(168,85,247,0.14)", color: "#a855f7" }}
@@ -86,15 +105,15 @@ function PatientStatCard({
       </div>
       <div className="flex items-end gap-3">
         <div>
-          <span className="text-3xl font-bold tracking-tight text-[#111]">{outpatient}</span>
-          <span className="ml-0.5 text-sm text-[#888]">名</span>
-          <p className="mt-0.5 text-[10px] text-[#888]">外来</p>
+          <span className="text-foreground text-3xl font-bold tracking-tight">{outpatient}</span>
+          <span className="text-muted-foreground ml-0.5 text-sm">名</span>
+          <p className="text-muted-foreground mt-0.5 text-[10px]">外来</p>
         </div>
-        <span className="mb-4 text-lg text-[#d4d4d4]">/</span>
+        <span className="text-border mb-4 text-lg">/</span>
         <div>
-          <span className="text-3xl font-bold tracking-tight text-[#111]">{inpatient}</span>
-          <span className="ml-0.5 text-sm text-[#888]">名</span>
-          <p className="mt-0.5 text-[10px] text-[#888]">入院</p>
+          <span className="text-foreground text-3xl font-bold tracking-tight">{inpatient}</span>
+          <span className="text-muted-foreground ml-0.5 text-sm">名</span>
+          <p className="text-muted-foreground mt-0.5 text-[10px]">入院</p>
         </div>
       </div>
     </div>
@@ -127,7 +146,7 @@ function ScheduleRow({ s, now }: { s: TodayScheduleRow; now: Date }) {
           ? "bg-green-500/[0.055] hover:bg-green-500/[0.09]"
           : cancelled
             ? "opacity-[0.42]"
-            : "hover:bg-black/[0.018]",
+            : "hover:bg-muted/40",
       ].join(" ")}
     >
       {/* 実施済み: 左2px青ライン */}
@@ -140,7 +159,7 @@ function ScheduleRow({ s, now }: { s: TodayScheduleRow; now: Date }) {
         <span
           className={[
             "block font-mono text-[13px] tabular-nums",
-            cancelled ? "text-[#ccc] line-through" : "font-medium text-[#222]",
+            cancelled ? "text-muted-foreground line-through" : "text-foreground font-medium",
           ].join(" ")}
         >
           {format(startAt, "HH:mm")}
@@ -157,14 +176,14 @@ function ScheduleRow({ s, now }: { s: TodayScheduleRow; now: Date }) {
             className={[
               "truncate text-[13px] leading-snug",
               cancelled
-                ? "text-[#bbb] line-through decoration-[#d8d8d8]"
-                : "font-medium text-[#111]",
+                ? "text-muted-foreground decoration-border line-through"
+                : "text-foreground font-medium",
             ].join(" ")}
           >
             {s.patient_name}
           </p>
         </div>
-        <p className="mt-0.5 text-[11px] leading-none text-[#aaa]">
+        <p className="text-muted-foreground mt-0.5 text-[11px] leading-none">
           {s.therapist_name} · {s.therapist_occupation.toUpperCase()} · {s.units}単位
         </p>
       </div>
@@ -179,9 +198,11 @@ function ScheduleRow({ s, now }: { s: TodayScheduleRow; now: Date }) {
             </span>
           ) : !completed ? (
             <div className="flex flex-col items-end gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#e4e4e4]" />
+              <span className="bg-muted-foreground/35 h-1.5 w-1.5 rounded-full" />
               {upcomingLabel && (
-                <span className="text-[10px] text-[#c0c0c0] tabular-nums">{upcomingLabel}</span>
+                <span className="text-muted-foreground text-[10px] tabular-nums">
+                  {upcomingLabel}
+                </span>
               )}
             </div>
           ) : null}
@@ -194,26 +215,37 @@ function ScheduleRow({ s, now }: { s: TodayScheduleRow; now: Date }) {
 // ---- アラートバッジ ----
 const ALERT_CONFIG = {
   initial_addition: {
-    color: "text-[#e87979]",
-    bg: "bg-[#fff5f5]",
-    border: "border-[#ffd6d6]",
+    color: "text-indigo-600 dark:text-indigo-400",
+    bg: "bg-indigo-50 dark:bg-indigo-950/40",
+    border: "border-indigo-200/70 dark:border-indigo-800/50",
+    icon: Sparkles,
+    sublabel: "初期加算対象",
   },
   early_addition: {
-    color: "text-[#e87979]",
-    bg: "bg-[#fff5f5]",
-    border: "border-[#ffd6d6]",
+    color: "text-indigo-600 dark:text-indigo-400",
+    bg: "bg-indigo-50 dark:bg-indigo-950/40",
+    border: "border-indigo-200/70 dark:border-indigo-800/50",
+    icon: Bell,
+    sublabel: "早期加算対象",
   },
   expiry_warning: {
-    color: "text-[#e87979]",
-    bg: "bg-[#fff5f5]",
-    border: "border-[#ffd6d6]",
+    color: "text-indigo-600 dark:text-indigo-400",
+    bg: "bg-indigo-50 dark:bg-indigo-950/40",
+    border: "border-indigo-200/70 dark:border-indigo-800/50",
+    icon: Clock,
+    sublabel: "算定日数終了間近",
   },
 } as const;
 
 // ---- 今日の予約 + ステータス内訳カード ----
 function TodayStatCard({ count, counts }: { count: number; counts: StatusCounts }) {
   const items = [
-    { label: "予約", count: counts.scheduled, dot: "bg-[#d4d4d4]", num: "text-[#555]" },
+    {
+      label: "予約",
+      count: counts.scheduled,
+      dot: "bg-muted-foreground/35",
+      num: "text-muted-foreground",
+    },
     { label: "保存中", count: counts.draft, dot: "bg-orange-400", num: "text-orange-500" },
     { label: "実施済み", count: counts.completed, dot: "bg-green-400", num: "text-green-600" },
     { label: "中止", count: counts.cancelled, dot: "bg-rose-400", num: "text-rose-500" },
@@ -221,21 +253,21 @@ function TodayStatCard({ count, counts }: { count: number; counts: StatusCounts 
   return (
     <div className="glass-card p-5">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-medium text-[#8a8fa3]">今日の予約</span>
-        <span className="rounded-xl bg-[#6366f1]/10 p-1.5 text-[#6366f1]">
+        <span className="text-muted-foreground text-xs font-medium">今日の予約</span>
+        <span className="bg-primary/10 text-primary rounded-xl p-1.5">
           <Calendar size={14} />
         </span>
       </div>
       <div className="flex items-end gap-1">
-        <span className="text-3xl font-bold tracking-tight text-[#111]">{count}</span>
-        <span className="mb-0.5 text-sm text-[#888]">件</span>
+        <span className="text-foreground text-3xl font-bold tracking-tight">{count}</span>
+        <span className="text-muted-foreground mb-0.5 text-sm">件</span>
       </div>
-      <div className="mt-4 flex flex-wrap gap-3 border-t border-[#f5f5f5] pt-3">
+      <div className="border-border mt-4 flex flex-wrap gap-3 border-t pt-3">
         {items.map(({ label, count: c, dot, num }) => (
           <div key={label} className="flex items-center gap-1">
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
             <span className={`text-xs font-semibold tabular-nums ${num}`}>{c}</span>
-            <span className="text-[10px] text-[#bbb]">{label}</span>
+            <span className="text-muted-foreground text-[10px]">{label}</span>
           </div>
         ))}
       </div>
@@ -245,21 +277,31 @@ function TodayStatCard({ count, counts }: { count: number; counts: StatusCounts 
 
 function AlertItem({ a }: { a: AlertRow }) {
   const cfg = ALERT_CONFIG[a.type];
+  const Icon = cfg.icon;
   return (
-    <div className={`flex items-center gap-3 rounded-lg border p-3 ${cfg.bg} ${cfg.border}`}>
-      <AlertTriangle size={14} className={`shrink-0 ${cfg.color}`} />
+    <div className={`flex items-center gap-3 rounded-xl border p-3 ${cfg.bg} ${cfg.border}`}>
+      <span
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/70 dark:bg-white/10 ${cfg.color}`}
+      >
+        <Icon size={13} />
+      </span>
       <div className="min-w-0 flex-1">
-        <p className={`text-xs font-medium ${cfg.color}`}>{a.label}</p>
-        <p className="truncate text-sm font-medium text-[#111]">{a.patient_name}</p>
+        <p className={`text-[10px] font-medium ${cfg.color}`}>{cfg.sublabel}</p>
+        <p className="text-foreground truncate text-sm font-medium">{a.patient_name}</p>
       </div>
-      <span className={`shrink-0 text-xs font-medium ${cfg.color}`}>残{a.daysRemaining}日</span>
+      <span
+        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums ${cfg.bg} ${cfg.color}`}
+      >
+        残{a.daysRemaining}日
+      </span>
     </div>
   );
 }
 
 export default async function DashboardPage() {
   const tenantId = await getTenantId();
-  const { stats, statusCounts, todaySchedules, alerts } = await getDashboardData(tenantId);
+  const { stats, statusCounts, todaySchedules, alerts, todayReminders } =
+    await getDashboardData(tenantId);
   const today = new Date();
 
   const completedToday = todaySchedules.filter((s) => s.session_status === "completed").length;
@@ -268,70 +310,63 @@ export default async function DashboardPage() {
     <div className="min-h-screen p-6">
       {/* ヘッダー */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-[#1d1f2b]">ダッシュボード</h1>
-        <p className="mt-1 text-sm text-[#8a8fa3]">
+        <h1 className="text-foreground text-2xl font-bold tracking-tight">ダッシュボード</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           {format(today, "yyyy年M月d日（E）", { locale: ja })} · 今日の予約 {stats.todayCount} 件
         </p>
       </div>
 
-      {/* KPIカード */}
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TodayStatCard count={stats.todayCount} counts={statusCounts} />
-        <StatCard
-          label="今月の単位数"
-          value={stats.monthlyUnits}
-          unit="単位"
-          icon={Clock}
-          iconColor="#0ea5e9"
-          iconBg="rgba(14,165,233,0.14)"
-        />
-        <PatientStatCard
-          icon={Users}
-          outpatient={stats.outpatientCount}
-          inpatient={stats.inpatientCount}
-        />
-        <StatCard
-          label="要確認アラート"
-          value={stats.alertCount}
-          unit="件"
-          icon={Zap}
-          accent={stats.alertCount > 0}
-          iconColor="#f59e0b"
-          iconBg="rgba(245,158,11,0.14)"
-        />
-      </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
+        <div className="space-y-4">
+          {/* KPIカード */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TodayStatCard count={stats.todayCount} counts={statusCounts} />
+            <WeeklyUnitsCard units={stats.weeklyUnits} limit={stats.weeklyUnitLimit} />
+            <PatientStatCard
+              icon={Users}
+              outpatient={stats.outpatientCount}
+              inpatient={stats.inpatientCount}
+            />
+            <StatCard
+              label="要確認アラート"
+              value={stats.alertCount}
+              unit="件"
+              icon={Bell}
+              accent={stats.alertCount > 0}
+              iconColor="#6366f1"
+              iconBg="rgba(99,102,241,0.12)"
+            />
+          </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* 今日のスケジュール */}
-        <div>
+          {/* 今日のスケジュール */}
           <div className="glass-card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[#f3f3f3] px-5 py-4">
+            <div className="border-border flex items-center justify-between border-b px-5 py-4">
               <div>
-                <h2 className="text-[13px] font-semibold tracking-tight text-[#111]">
+                <h2 className="text-foreground text-[13px] font-semibold tracking-tight">
                   今日のスケジュール
                 </h2>
                 {stats.todayCount > 0 && (
-                  <p className="mt-0.5 text-[11px] text-[#bbb]">
+                  <p className="text-muted-foreground mt-0.5 text-[11px]">
                     {completedToday} / {stats.todayCount} 件実施済み
                   </p>
                 )}
               </div>
               <Link
                 href="/schedule"
-                className="flex items-center gap-0.5 text-[11px] text-[#aaa] transition-colors hover:text-[#555]"
+                className="text-muted-foreground hover:text-foreground flex items-center gap-0.5 text-[11px] transition-colors"
               >
                 スケジュールへ
                 <ChevronRight size={11} />
               </Link>
             </div>
 
-            <div className="divide-y divide-black/[0.04]">
+            <div className="divide-border divide-y">
               {todaySchedules.length === 0 ? (
                 <div className="py-12 text-center">
-                  <p className="text-[13px] text-[#ccc]">今日の予約はありません</p>
+                  <p className="text-muted-foreground text-[13px]">今日の予約はありません</p>
                   <Link
                     href="/schedule"
-                    className="mt-2 inline-block text-[11px] text-[#aaa] transition-colors hover:text-[#555]"
+                    className="text-muted-foreground hover:text-foreground mt-2 inline-block text-[11px] transition-colors"
                   >
                     予約を追加する
                   </Link>
@@ -343,30 +378,32 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* 右カラム：アラート + クイックリンク */}
+        {/* 右カラム：アラート + リマインダー */}
         <div className="space-y-4">
-          {/* アラート */}
           <div className="glass-card overflow-hidden">
-            <div className="border-b border-[rgba(20,24,60,0.06)] px-5 py-4">
-              <h2 className="text-sm font-semibold text-[#1d1f2b]">アラート</h2>
-              <p className="mt-0.5 text-xs text-[#888]">加算対象・算定日数終了間近</p>
+            <div className="border-border border-b px-5 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-foreground text-sm font-semibold">要確認アラート</h2>
+                  <p className="text-muted-foreground mt-0.5 text-xs">加算対象・算定日数終了間近</p>
+                </div>
+                <span className="bg-primary/10 text-primary rounded-xl p-1.5">
+                  <Bell size={14} />
+                </span>
+              </div>
             </div>
-            <div className="space-y-2 p-4">
+            <div className="max-h-[244px] space-y-2 overflow-y-auto p-4">
               {alerts.length === 0 ? (
-                <p className="py-4 text-center text-xs text-[#888]">現在アラートはありません</p>
+                <p className="text-muted-foreground py-4 text-center text-xs">
+                  現在アラートはありません
+                </p>
               ) : (
-                alerts.slice(0, 6).map((a, i) => <AlertItem key={i} a={a} />)
-              )}
-              {alerts.length > 6 && (
-                <Link
-                  href="/patients"
-                  className="block pt-1 text-center text-xs text-[#6366f1] hover:underline"
-                >
-                  他 {alerts.length - 6} 件を見る
-                </Link>
+                alerts.map((a, i) => <AlertItem key={`${a.patient_id}-${a.type}-${i}`} a={a} />)
               )}
             </div>
           </div>
+
+          <ReminderCard tenantId={tenantId} reminders={todayReminders} />
         </div>
       </div>
     </div>

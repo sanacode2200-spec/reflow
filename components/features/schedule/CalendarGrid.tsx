@@ -106,9 +106,8 @@ function DroppableColumn({
         height,
         position: "relative",
         flexShrink: 0,
-        borderRight: "1px solid rgba(15,23,42,0.04)",
       }}
-      className={`transition-colors ${isOver && !isInvalidTarget ? "bg-[#6366f1]/[0.06]" : ""}`}
+      className={`border-border border-r transition-colors ${isOver && !isInvalidTarget ? "bg-primary/10" : ""}`}
       onMouseDown={(e) => {
         if (e.button !== 0) return;
         if ((e.target as Element).closest("[data-event-block]")) return;
@@ -152,7 +151,7 @@ function DroppableColumn({
       {isToday && (
         <div
           style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-          className="bg-[#6366f1]/[0.04]"
+          className="bg-primary/5"
         />
       )}
       {/* 日境界線 */}
@@ -164,7 +163,7 @@ function DroppableColumn({
             bottom: 0,
             left: 0,
             width: 1,
-            background: "#e5e7eb",
+            background: "var(--border)",
             pointerEvents: "none",
             zIndex: 1,
           }}
@@ -223,17 +222,17 @@ function DroppableColumn({
 // グリッド線の色（1時間ごとのみ表示、30分はドット、それ以外は非表示）
 function getGridLineStyle(i: number, slotMinutes: number): string {
   if (slotMinutes === 20) {
-    if (i % 3 === 0) return "1px solid #e5e7eb";
+    if (i % 3 === 0) return "1px solid var(--border)";
     return "none";
   }
   if (slotMinutes === 10) {
-    if (i % 6 === 0) return "1px solid #e5e7eb";
-    if (i % 3 === 0) return "1px dashed #f0f0f0";
+    if (i % 6 === 0) return "1px solid var(--border)";
+    if (i % 3 === 0) return "1px dashed color-mix(in oklch, var(--border) 60%, transparent)";
     return "none";
   }
   // 5分
-  if (i % 12 === 0) return "1px solid #e5e7eb";
-  if (i % 6 === 0) return "1px dashed #f0f0f0";
+  if (i % 12 === 0) return "1px solid var(--border)";
+  if (i % 6 === 0) return "1px dashed color-mix(in oklch, var(--border) 60%, transparent)";
   return "none";
 }
 
@@ -251,7 +250,7 @@ type Props = {
   activeOccupation: string | null;
   selection: Selection;
   resizing: ResizingState;
-  onEventSelect: (instance: ScheduleInstance) => void;
+  onEventDoubleClick: (instance: ScheduleInstance) => void;
   onEventContextMenu: (x: number, y: number, instance: ScheduleInstance) => void;
   onSelectionStart: (dayIdx: number, staffId: string, startMin: number, columnTop: number) => void;
   onCellContextMenu: (
@@ -276,7 +275,7 @@ export default function CalendarGrid({
   activeOccupation,
   selection,
   resizing,
-  onEventSelect,
+  onEventDoubleClick,
   onEventContextMenu,
   onSelectionStart,
   onCellContextMenu,
@@ -305,9 +304,9 @@ export default function CalendarGrid({
   const slotLines = Array.from({ length: totalSlots + 1 }, (_, i) => i);
 
   return (
-    <div className="flex min-w-max flex-col bg-white/50 select-none">
+    <div className="bg-card/50 flex min-w-max flex-col select-none">
       {/* ── ヘッダー行 1: 曜日 + 日付 ── */}
-      <div className="sticky top-0 z-20 flex border-b border-[rgba(20,24,60,0.06)] bg-white/85 backdrop-blur">
+      <div className="border-border bg-card/85 sticky top-0 z-20 flex border-b backdrop-blur">
         <div style={{ width: TIME_COL_W, flexShrink: 0 }} />
         {weekDays.map((day, dIdx) => {
           const isToday = isSameDay(day, new Date());
@@ -315,24 +314,24 @@ export default function CalendarGrid({
           const isSun = dow === 0;
           const isSat = dow === 6;
           const dayColor = isToday
-            ? "text-[#6366f1]"
+            ? "text-primary"
             : isSun
               ? "text-red-500"
               : isSat
                 ? "text-violet-500"
-                : "text-[#1d1f2b]";
+                : "text-foreground";
           const dateColor = isToday
-            ? "text-[#6366f1]"
+            ? "text-primary"
             : isSun
               ? "text-red-400"
               : isSat
                 ? "text-violet-400"
-                : "text-[#8a8fa3]";
+                : "text-muted-foreground";
           return (
             <div
               key={dIdx}
               style={{ width: COL_W * visibleStaffs.length, flexShrink: 0 }}
-              className={`border-l border-[rgba(20,24,60,0.06)] py-1.5 text-center ${isToday ? "bg-[#6366f1]/[0.05]" : ""}`}
+              className={`border-border border-l py-1.5 text-center ${isToday ? "bg-primary/5" : ""}`}
             >
               <span className={`text-sm font-bold ${dayColor}`}>{DAY_NAMES_JP[dIdx]}</span>
               <span className={`ml-1.5 text-xs ${dateColor}`}>{format(day, "M/d")}</span>
@@ -342,7 +341,7 @@ export default function CalendarGrid({
       </div>
 
       {/* ── ヘッダー行 2: スタッフ名 ── */}
-      <div className="sticky top-[36px] z-20 flex border-b border-[rgba(20,24,60,0.06)] bg-white/85 backdrop-blur">
+      <div className="border-border bg-card/85 sticky top-[36px] z-20 flex border-b backdrop-blur">
         <div style={{ width: TIME_COL_W, flexShrink: 0 }} />
         {weekDays.map((day, dIdx) =>
           visibleStaffs.map((staff) => {
@@ -353,12 +352,12 @@ export default function CalendarGrid({
               <div
                 key={`${dIdx}-${staff.id}`}
                 style={{ width: COL_W, flexShrink: 0 }}
-                className={`border-l border-[rgba(20,24,60,0.06)] py-1 text-center ${isToday ? "bg-[#6366f1]/[0.04]" : ""}`}
+                className={`border-border border-l py-1 text-center ${isToday ? "bg-primary/5" : ""}`}
               >
                 <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${headerCls}`}>
                   {staff.occupation.toUpperCase()}
                 </span>
-                <div className="mt-0.5 truncate px-1 text-[11px] leading-tight text-[#555b6d]">
+                <div className="text-muted-foreground mt-0.5 truncate px-1 text-[11px] leading-tight">
                   {staff.name.split(" ")[0]}
                 </div>
               </div>
@@ -372,7 +371,7 @@ export default function CalendarGrid({
         {/* 時間軸 */}
         <div
           style={{ width: TIME_COL_W, height: totalHeightPx, flexShrink: 0, position: "relative" }}
-          className="border-r border-[rgba(20,24,60,0.06)] bg-white/40"
+          className="border-border bg-card/40 border-r"
         >
           {hourLabels.map(({ label, topPx, hour }) => (
             <div
@@ -388,7 +387,7 @@ export default function CalendarGrid({
                       ? "translateY(-100%)"
                       : "translateY(-50%)",
               }}
-              className="pr-1.5 text-[10px] whitespace-nowrap text-[#8a8fa3]"
+              className="text-muted-foreground pr-1.5 text-[10px] whitespace-nowrap"
             >
               {label}
             </div>
@@ -451,7 +450,7 @@ export default function CalendarGrid({
                     slotMinutes={slotMinutes}
                     slotHeightPx={slotHeightPx}
                     resizeEndMin={resizing?.instanceId === inst.id ? resizing.newEndMin : undefined}
-                    onClick={onEventSelect}
+                    onDoubleClick={onEventDoubleClick}
                     onContextMenu={onEventContextMenu}
                     onResizeStart={onResizeStart}
                   />

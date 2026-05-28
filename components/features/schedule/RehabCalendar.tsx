@@ -29,6 +29,7 @@ class NoDndPointerSensor extends PointerSensor {
   ] as typeof PointerSensor.activators;
 }
 import { addDays, addWeeks, endOfDay, format, startOfWeek, subWeeks } from "date-fns";
+import { Ban, CalendarPlus, CheckCircle2, ClipboardList, Copy, Pencil, Trash2 } from "lucide-react";
 import type { Patient, Schedule, ScheduleInstance, Staff } from "@/lib/types";
 import { GRID_END_HOUR, GRID_START_HOUR, getTotalSlots, snapMinutesToSlot } from "@/lib/grid";
 import { calcUnitsFromMinutes } from "@/lib/rehab/calculator";
@@ -500,6 +501,7 @@ export default function RehabCalendar({
         items: [
           {
             label: `予約を作成（${formatT(start)}〜${formatT(end)}）`,
+            icon: <CalendarPlus size={12} />,
             onClick: () => {
               onCreateRequested?.({ start, end, therapistId: staffId });
               setSelection(null);
@@ -520,15 +522,18 @@ export default function RehabCalendar({
         y,
         items: [
           {
-            label: "記録を入力",
-            onClick: () => onRecordOpen?.(instance.schedule_id),
-          },
-          {
             label: "予約を編集",
+            icon: <Pencil size={12} />,
             onClick: () => onEditRequested?.(instance.schedule_id),
           },
           {
+            label: "記録を入力",
+            icon: <ClipboardList size={12} />,
+            onClick: () => onRecordOpen?.(instance.schedule_id),
+          },
+          {
             label: "複数日にコピー",
+            icon: <Copy size={12} />,
             onClick: () => {
               setSelectedInstance(instance);
               setShowCopyPicker(true);
@@ -536,6 +541,7 @@ export default function RehabCalendar({
           },
           {
             label: instance.is_cancelled ? "中止を解除" : "中止にする",
+            icon: instance.is_cancelled ? <CheckCircle2 size={12} /> : <Ban size={12} />,
             onClick: () => {
               void onScheduleCancel?.(instance.schedule_id, !instance.is_cancelled)?.catch(
                 (err: unknown) => {
@@ -547,6 +553,8 @@ export default function RehabCalendar({
           {
             label: "削除",
             danger: true,
+            separator: true,
+            icon: <Trash2 size={12} />,
             onClick: () => {
               if (window.confirm("この予約を削除しますか？")) {
                 onScheduleDelete?.(instance.schedule_id);
@@ -559,15 +567,15 @@ export default function RehabCalendar({
     [onEditRequested, onScheduleDelete, onScheduleCancel, onRecordOpen]
   );
 
-  const handleEventSelect = useCallback(
+  const handleEventDoubleClick = useCallback(
     (instance: ScheduleInstance) => {
       if (suppressNextEventClickRef.current) {
         suppressNextEventClickRef.current = false;
         return;
       }
-      onEditRequested?.(instance.schedule_id);
+      onRecordOpen?.(instance.schedule_id);
     },
-    [onEditRequested]
+    [onRecordOpen]
   );
 
   const weekLabel = `${format(currentWeekStart, "yyyy年M月d日")} 〜 ${format(weekEnd, "M月d日")}`;
@@ -581,7 +589,7 @@ export default function RehabCalendar({
       onDragCancel={handleDragCancel}
     >
       <div
-        className="relative flex h-full flex-col overflow-hidden rounded-[1.5rem] bg-white/55"
+        className="bg-card/55 relative flex h-full flex-col overflow-hidden rounded-[1.5rem]"
         onClick={() => {
           setSelection(null);
           selectionRef.current = null;
@@ -590,7 +598,7 @@ export default function RehabCalendar({
       >
         {/* ── エラーバナー ── */}
         {moveError && (
-          <div className="absolute top-2 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600 shadow-md">
+          <div className="border-destructive/20 bg-destructive/10 text-destructive absolute top-2 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border px-4 py-2 text-sm shadow-md">
             {moveError}
             <button
               onClick={(e) => {
@@ -605,42 +613,42 @@ export default function RehabCalendar({
         )}
         {/* ── ナビゲーションバー ── */}
         <div
-          className="relative z-40 flex shrink-0 flex-wrap items-center gap-2 border-b border-[rgba(20,24,60,0.06)] bg-white/70 px-4 py-3 backdrop-blur"
+          className="border-border bg-card/70 relative z-40 flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-3 backdrop-blur"
           onClick={(e) => e.stopPropagation()}
         >
           {/* 週ナビ */}
           <button
             onClick={() => setCurrentWeekStart((w) => subWeeks(w, 1))}
-            className="rounded-lg px-3 py-1.5 text-sm text-[#8a8fa3] transition-colors hover:bg-white hover:text-[#1d1f2b]"
+            className="text-muted-foreground hover:bg-card hover:text-foreground rounded-lg px-3 py-1.5 text-sm transition-colors"
           >
             ← 前週
           </button>
-          <span className="min-w-[180px] text-center text-sm font-bold text-[#1d1f2b]">
+          <span className="text-foreground min-w-[180px] text-center text-sm font-bold">
             {weekLabel}
           </span>
           <button
             onClick={() => setCurrentWeekStart((w) => addWeeks(w, 1))}
-            className="rounded-lg px-3 py-1.5 text-sm text-[#8a8fa3] transition-colors hover:bg-white hover:text-[#1d1f2b]"
+            className="text-muted-foreground hover:bg-card hover:text-foreground rounded-lg px-3 py-1.5 text-sm transition-colors"
           >
             翌週 →
           </button>
           <button
             onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-            className="rounded-lg px-3 py-1.5 text-sm text-[#8a8fa3] transition-colors hover:bg-white hover:text-[#1d1f2b]"
+            className="text-muted-foreground hover:bg-card hover:text-foreground rounded-lg px-3 py-1.5 text-sm transition-colors"
           >
             今週
           </button>
 
           {/* 時間刻み切り替え */}
-          <div className="ml-2 flex overflow-hidden rounded-lg border border-[rgba(20,24,60,0.06)] bg-white/60 p-0.5 text-sm">
+          <div className="border-border bg-card/60 ml-2 flex overflow-hidden rounded-lg border p-0.5 text-sm">
             {([20, 10, 5] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setSlotMinutes(m)}
                 className={`rounded-md px-3 py-1 transition-all ${
                   slotMinutes === m
-                    ? "bg-[#6366f1] font-medium text-white shadow-sm"
-                    : "text-[#8a8fa3] hover:bg-white hover:text-[#1d1f2b]"
+                    ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                    : "text-muted-foreground hover:bg-card hover:text-foreground"
                 }`}
               >
                 {m}分
@@ -650,7 +658,7 @@ export default function RehabCalendar({
 
           {/* スタッフ選択エリア */}
           <div className="ml-4 flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-[#8a8fa3]">表示中:</span>
+            <span className="text-muted-foreground text-xs">表示中:</span>
             {visibleStaffs.map((staff) => {
               const isSelf = staff.id === currentStaffId;
               const chipCls =
@@ -679,19 +687,19 @@ export default function RehabCalendar({
               <div className="relative" ref={addMenuRef}>
                 <button
                   onClick={() => setShowAddMenu((v) => !v)}
-                  className="rounded-full border border-dashed border-[#c9cbd6] px-2 py-0.5 text-xs text-[#8a8fa3] transition-colors hover:bg-white hover:text-[#1d1f2b]"
+                  className="border-border text-muted-foreground hover:bg-card hover:text-foreground rounded-full border border-dashed px-2 py-0.5 text-xs transition-colors"
                 >
                   + 追加
                 </button>
                 {showAddMenu && (
-                  <div className="absolute top-full left-0 z-[80] mt-1 min-w-[140px] rounded-xl border border-[rgba(20,24,60,0.06)] bg-white shadow-[0_12px_28px_rgba(20,24,60,0.12)]">
+                  <div className="border-border bg-popover text-popover-foreground absolute top-full left-0 z-[80] mt-1 min-w-[140px] rounded-xl border shadow-[0_12px_28px_rgba(20,24,60,0.12)]">
                     {addableStaffs.map((staff) => {
                       const chipCls = OCCUPATION_CHIP[staff.occupation] ?? "";
                       return (
                         <button
                           key={staff.id}
                           onClick={() => handleAddStaff(staff.id)}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-[#f7f7fb]"
+                          className="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
                         >
                           <span
                             className={`rounded border px-1 py-0.5 text-[10px] font-bold ${chipCls}`}
@@ -730,7 +738,7 @@ export default function RehabCalendar({
               activeOccupation={activeOccupation}
               selection={selection}
               resizing={resizing}
-              onEventSelect={handleEventSelect}
+              onEventDoubleClick={handleEventDoubleClick}
               onEventContextMenu={handleEventContextMenu}
               onSelectionStart={handleSelectionStart}
               onCellContextMenu={handleCellContextMenu}

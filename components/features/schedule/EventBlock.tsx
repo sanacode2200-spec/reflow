@@ -27,7 +27,7 @@ function getStatusStyle(
     case "draft":
       return { bg: "bg-orange-50", text: "text-orange-800", accent };
     default:
-      return { bg: "bg-white", text: "text-slate-700", accent };
+      return { bg: "bg-card", text: "text-card-foreground", accent };
   }
 }
 
@@ -62,7 +62,7 @@ type Props = {
   slotMinutes: number;
   slotHeightPx: number;
   resizeEndMin?: number;
-  onClick: (instance: ScheduleInstance) => void;
+  onDoubleClick: (instance: ScheduleInstance) => void;
   onContextMenu?: (x: number, y: number, instance: ScheduleInstance) => void;
   onResizeStart?: (instance: ScheduleInstance, clientY: number, columnTop: number) => void;
 };
@@ -74,7 +74,7 @@ export default function EventBlock({
   slotMinutes,
   slotHeightPx,
   resizeEndMin,
-  onClick,
+  onDoubleClick,
   onContextMenu,
   onResizeStart,
 }: Props) {
@@ -144,10 +144,14 @@ export default function EventBlock({
           touchAction: "none",
           opacity: instance.is_cancelled ? 0.65 : 1,
         }}
-        className={`z-10 cursor-grab overflow-hidden text-xs select-none ${bg} ${text}`}
+        className={`group z-10 cursor-pointer overflow-hidden text-xs transition-all duration-100 select-none hover:shadow-[0_3px_10px_rgba(0,0,0,0.13)] hover:brightness-[0.97] ${bg} ${text}`}
         onClick={(e) => {
           e.stopPropagation();
-          onClick(instance);
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          onDoubleClick(instance);
         }}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -191,7 +195,7 @@ export default function EventBlock({
               height: handleHeight,
               cursor: "ns-resize",
             }}
-            className="bg-white/20 hover:bg-white/40"
+            className="bg-black/0 transition-colors group-hover:bg-black/10 hover:!bg-black/18"
             onMouseDown={handleResizeMouseDown}
             onClick={(e) => {
               e.stopPropagation();
@@ -211,30 +215,37 @@ export default function EventBlock({
             zIndex: 70,
             pointerEvents: "none",
           }}
-          className="min-w-[180px] rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-xs shadow-lg"
+          className="border-border bg-popover text-popover-foreground min-w-[180px] rounded-lg border px-3 py-2.5 text-xs shadow-lg"
         >
-          <p className="mb-1 font-bold text-gray-900">{patient?.name ?? "—"}</p>
-          <p className="text-gray-600">
+          <p className="text-foreground mb-1 font-bold">{patient?.name ?? "—"}</p>
+          <p className="text-muted-foreground">
             {format(instance.start_at, "HH:mm")} 〜 {format(instance.end_at, "HH:mm")}
           </p>
           {staff && (
-            <p className="mt-0.5 text-gray-500">
+            <p className="text-muted-foreground mt-0.5">
               {staff.name}（{staff.occupation.toUpperCase()}）
             </p>
           )}
-          <p className="text-gray-500">
+          <p className="text-muted-foreground">
             {units}単位 / {Math.round(durationMin)}分
           </p>
           {instance.comment && (
-            <p className="mt-1 line-clamp-2 border-t border-gray-100 pt-1 text-gray-600">
+            <p className="border-border text-muted-foreground mt-1 line-clamp-2 border-t pt-1">
               {instance.comment}
             </p>
           )}
-          <span
-            className={`mt-1.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${statusBadgeStyle(instance)}`}
-          >
-            {statusLabel(instance)}
-          </span>
+          <div className="mt-1.5 flex items-center justify-between">
+            <span
+              className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${statusBadgeStyle(instance)}`}
+            >
+              {statusLabel(instance)}
+            </span>
+            {!instance.is_cancelled && (
+              <span className="text-muted-foreground/60 text-[9px]">
+                ダブルクリック:記録 / 右クリック:メニュー
+              </span>
+            )}
+          </div>
         </div>
       )}
     </>
