@@ -6,7 +6,7 @@ import { getPatient } from "@/lib/actions/patient";
 import { getStaffs } from "@/lib/actions/schedule";
 import { checkAdditions } from "@/lib/rehab/additions";
 import { differenceInDays, differenceInYears, parseISO } from "date-fns";
-import { CheckCircle, AlertTriangle, ChevronLeft, ClipboardList } from "lucide-react";
+import { CheckCircle, AlertTriangle, ChevronLeft, ClipboardList, FileText } from "lucide-react";
 import PatientEditModal from "./patient-edit-modal";
 
 const GENDER = { male: "男性", female: "女性", other: "その他" };
@@ -93,6 +93,13 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
           <span className="rounded bg-red-50 px-2 py-0.5 text-xs text-red-500">アーカイブ済み</span>
         )}
         <div className="ml-auto flex items-center gap-2">
+          <Link
+            href={`/patients/${patient.id}/documents`}
+            className="border-border bg-card/70 text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
+          >
+            <FileText size={14} />
+            書類一覧
+          </Link>
           <Link
             href={`/records?patient_id=${patient.id}`}
             className="border-border bg-card/70 text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"

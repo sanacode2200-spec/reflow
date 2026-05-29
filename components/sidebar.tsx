@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Users,
   ClipboardList,
+  FileText,
   Settings,
   LogOut,
   KeyRound,
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/patients", label: "患者一覧", icon: Users },
   { href: "/schedule", label: "スケジュール", icon: CalendarDays },
   { href: "/records", label: "実施記録一覧", icon: ClipboardList },
+  { href: "/documents", label: "計画書管理", icon: FileText },
   { href: "/settings/staffs", label: "スタッフ管理", icon: Settings },
 ];
 
@@ -66,7 +68,7 @@ export default function Sidebar({ staffName, staffCode }: Props) {
 
         <nav className="flex-1 space-y-1 px-3 py-2">
           {navItems.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href;
+            const active = pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
             return (
               <Link
                 key={href}

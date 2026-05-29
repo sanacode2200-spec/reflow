@@ -6,3 +6,4 @@ export * from "./schedules";
 export * from "./sessions";
 export * from "./reminders";
 export * from "./audit-logs";
+export * from "./rehab-documents";

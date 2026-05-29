@@ -29,6 +29,13 @@
       "when": 1779938024368,
       "tag": "0003_align_current_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780040861192,
+      "tag": "0005_add_rehab_documents",
+      "breakpoints": true
     }
   ]
 }

@@ -473,7 +473,7 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
                     className="px-4 py-3 first:pl-5"
                     onClick={() => {
                       if ((cell.column.columnDef as { id?: string }).id !== "actions") {
-                        window.location.href = `/patients/${row.original.id}`;
+                        window.location.href = `/patients/${row.original.id}/documents`;
                       }
                     }}
                   >

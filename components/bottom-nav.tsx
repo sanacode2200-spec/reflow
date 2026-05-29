@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Users, ClipboardList, Settings } from "lucide-react";
+import { CalendarDays, Users, ClipboardList, FileText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/patients", label: "患者", icon: Users },
   { href: "/schedule", label: "スケジュール", icon: CalendarDays },
   { href: "/records", label: "記録一覧", icon: ClipboardList },
+  { href: "/documents", label: "計画書", icon: FileText },
   { href: "/settings/staffs", label: "設定", icon: Settings },
 ];
 
@@ -27,7 +28,9 @@ export default function BottomNav() {
             href={href}
             className={cn(
               "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-xs transition-colors",
-              pathname === href ? "text-primary" : "text-muted-foreground"
+              pathname === href || pathname.startsWith(`${href}/`)
+                ? "text-primary"
+                : "text-muted-foreground"
             )}
           >
             <Icon size={20} />

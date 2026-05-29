@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     files: [
       "app/(dashboard)/patients/patients-client.tsx",
       "components/features/staff/staff-table.tsx",
+      "app/(dashboard)/documents/new/document-form.tsx",
+      "app/(dashboard)/documents/**/*.tsx",
     ],
     rules: {
       "react-hooks/incompatible-library": "off",

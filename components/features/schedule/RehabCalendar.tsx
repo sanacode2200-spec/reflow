@@ -33,7 +33,7 @@ import { Ban, CalendarPlus, CheckCircle2, ClipboardList, Copy, Pencil, Trash2 } 
 import type { Patient, Schedule, ScheduleInstance, Staff } from "@/lib/types";
 import { GRID_END_HOUR, GRID_START_HOUR, getTotalSlots, snapMinutesToSlot } from "@/lib/grid";
 import { calcUnitsFromMinutes } from "@/lib/rehab/calculator";
-import { expandSchedules } from "@/lib/recurrence";
+import { expandSchedules, hasConflictOnDate } from "@/lib/recurrence";
 import CalendarGrid from "./CalendarGrid";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
 import CopyDatePicker from "./CopyDatePicker";
@@ -411,6 +411,14 @@ export default function RehabCalendar({
 
       const original = schedules.find((s) => s.id === instance.schedule_id);
       if (original) {
+        if (
+          hasConflictOnDate(effectiveSchedules, targetStaff.id, original.id, newStartAt, newEndAt)
+        ) {
+          setMoveError("同じ時間帯に既存の予約があります");
+          setSelectedInstance(null);
+          return;
+        }
+
         const updatedSchedule = {
           ...original,
           therapist_id: targetStaff.id,
@@ -430,7 +438,16 @@ export default function RehabCalendar({
       }
       setSelectedInstance(null);
     },
-    [instances, weekDays, staffs, staffMap, schedules, slotHeightPx, slotMinutes]
+    [
+      instances,
+      weekDays,
+      staffs,
+      staffMap,
+      schedules,
+      effectiveSchedules,
+      slotHeightPx,
+      slotMinutes,
+    ]
   );
 
   // ドラッグ選択開始

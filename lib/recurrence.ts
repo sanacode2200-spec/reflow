@@ -106,7 +106,7 @@ export function hasConflictOnDate(
     const baseStart = new Date(schedule.start_at);
     const baseEnd = new Date(schedule.end_at);
 
-    if (!schedule.recurrence_rule) {
+    if (!schedule.recurrence_rule || schedule.recurrence_rule === "CUSTOM") {
       if (!isSameDay(baseStart, copyStart)) continue;
       if (baseStart < copyEnd && baseEnd > copyStart) return true;
     } else {
