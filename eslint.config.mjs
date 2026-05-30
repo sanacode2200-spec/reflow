@@ -17,6 +17,7 @@ const eslintConfig = defineConfig([
       "components/features/staff/staff-table.tsx",
       "app/(dashboard)/documents/new/document-form.tsx",
       "app/(dashboard)/documents/**/*.tsx",
+      "components/features/documents/b21-plan-form.tsx",
     ],
     rules: {
       "react-hooks/incompatible-library": "off",

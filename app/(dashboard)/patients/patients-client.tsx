@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
@@ -70,6 +71,7 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
 export default function PatientsClient({ patients: initial, tenantId, staffs }: Props) {
   "use no memo";
 
+  const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -472,8 +474,8 @@ export default function PatientsClient({ patients: initial, tenantId, staffs }: 
                     key={cell.id}
                     className="px-4 py-3 first:pl-5"
                     onClick={() => {
-                      if ((cell.column.columnDef as { id?: string }).id !== "actions") {
-                        window.location.href = `/patients/${row.original.id}/documents`;
+                      if (cell.column.id !== "actions") {
+                        router.push(`/patients/${row.original.id}`);
                       }
                     }}
                   >

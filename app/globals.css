@@ -162,3 +162,152 @@
     border-radius: 1.5rem;
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm;
+  }
+
+  nav,
+  aside,
+  .sidebar,
+  .no-print {
+    display: none !important;
+  }
+  .page-break {
+    break-before: page;
+  }
+  body {
+    font-size: 7.5pt;
+    line-height: 1.25;
+    background: white !important;
+  }
+}
+
+/* print スタイルは @layer utilities に入れて Tailwind のレイヤー優先度に乗せる */
+@layer utilities {
+  @media print {
+    textarea {
+      height: 1.1em !important;
+      min-height: 0 !important;
+      max-height: 1.1em !important;
+      overflow: hidden !important;
+      resize: none !important;
+      padding: 0 2px !important;
+      font-size: 7.5pt !important;
+      line-height: 1.25 !important;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"] {
+      font-size: 7.5pt !important;
+      padding: 0 2px !important;
+    }
+
+    .space-y-6 > * + * {
+      margin-top: 4px !important;
+    }
+    .space-y-5 > * + * {
+      margin-top: 3px !important;
+    }
+    .space-y-3 > * + * {
+      margin-top: 2px !important;
+    }
+    .space-y-2 > * + * {
+      margin-top: 1px !important;
+    }
+    .space-y-1 > * + * {
+      margin-top: 1px !important;
+    }
+    .space-y-px > * + * {
+      margin-top: 0 !important;
+    }
+    .space-y-0\.5 > * + * {
+      margin-top: 0 !important;
+    }
+
+    .gap-6 {
+      gap: 5px !important;
+    }
+    .gap-4 {
+      gap: 4px !important;
+    }
+    .gap-3 {
+      gap: 3px !important;
+    }
+    .gap-2 {
+      gap: 2px !important;
+    }
+    .gap-x-5 {
+      column-gap: 4px !important;
+    }
+    .gap-x-6 {
+      column-gap: 6px !important;
+    }
+    .gap-y-px,
+    .gap-y-0,
+    .gap-y-0\.5 {
+      row-gap: 0 !important;
+    }
+
+    .pb-1 {
+      padding-bottom: 0 !important;
+    }
+    .mb-0\.5 {
+      margin-bottom: 0 !important;
+    }
+    .mb-1 {
+      margin-bottom: 1px !important;
+    }
+    .mt-2 {
+      margin-top: 2px !important;
+    }
+
+    /* ReadValue <p> の min-h を確実に 0 に */
+    p {
+      min-height: 0 !important;
+      line-height: 1.2 !important;
+    }
+    h2 {
+      min-height: 0 !important;
+    }
+
+    /* チェックボックス：ネイティブ描画を無効化し白抜き四角で表示 */
+    input[type="checkbox"] {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      width: 0.65em !important;
+      height: 0.65em !important;
+      border: 0.8px solid #444 !important;
+      background: white !important;
+      display: inline-block !important;
+      vertical-align: baseline !important;
+      position: relative !important;
+      top: 0.05em !important;
+      flex-shrink: 0 !important;
+    }
+    input[type="checkbox"]:checked {
+      background: #222 !important;
+    }
+
+    /* ラジオボタン（基本動作）*/
+    input[type="radio"] {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      width: 0.65em !important;
+      height: 0.65em !important;
+      border: 0.8px solid #444 !important;
+      border-radius: 50% !important;
+      background: white !important;
+      display: inline-block !important;
+      vertical-align: baseline !important;
+      position: relative !important;
+      top: 0.05em !important;
+    }
+    input[type="radio"]:checked {
+      background: #222 !important;
+    }
+  }
+}

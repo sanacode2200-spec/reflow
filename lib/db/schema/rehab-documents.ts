@@ -10,15 +10,14 @@ export type ComprehensivePlanContent = {
   long_term_goal: string;
   short_term_goal: string;
   goal_period: string;
-  b21_checks?: Record<string, boolean>;
-  b21_text?: Record<string, string>;
   treatment_content?: string;
   comorbidities?: string;
   rest_risk?: string;
   contraindications?: string;
-  body_functions?: string;
-  basic_movements?: string;
-  adl_scores?: string;
+  body_function_checks?: Record<string, boolean>;
+  body_function_texts?: Record<string, string>;
+  basic_movement_scores?: Record<string, string>;
+  fim_scores?: Record<string, number | null>;
   assistive_devices?: string;
   monthly_status?: string;
   nutrition?: string;
@@ -50,6 +49,22 @@ export type ComprehensivePlanContent = {
   doctor_name?: string;
   consent_obtained: boolean;
   consent_date?: string;
+  // 作成医療機関及び担当者
+  medical_institution?: string;
+  rehab_doctor?: string;
+  attending_doctor?: string;
+  creator_pt?: string;
+  creator_ot?: string;
+  creator_st?: string;
+  creator_nurse?: string;
+  creator_sw?: string;
+  creator_dietitian?: string;
+  explanation_person?: string;
+  // 運動量増加機器加算
+  exercise_device_disease?: string;
+  exercise_device_onset?: string;
+  exercise_device_findings?: string;
+  exercise_device_plan_detail?: string;
 };
 
 export const rehabDocuments = pgTable("rehab_documents", {
