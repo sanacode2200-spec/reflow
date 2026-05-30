@@ -161,8 +161,8 @@ function Field({
       readOnly={readOnly}
       {...register(field)}
       className={cn(
-        "absolute resize-none bg-transparent px-1 py-0.5 text-[10px] leading-[1.22] text-black outline-none",
-        !readOnly && "focus:bg-yellow-100/70",
+        "absolute resize-none overflow-hidden border border-transparent bg-transparent px-[2px] py-[1px] text-[9px] leading-[1.18] text-black outline-none",
+        !readOnly && "focus:border-sky-500/50 focus:bg-sky-50/10",
         className
       )}
       style={styleRect(x, y, w, h)}
@@ -194,8 +194,8 @@ function InputField({
       readOnly={readOnly}
       {...register(textPath(name))}
       className={cn(
-        "absolute bg-transparent px-0.5 text-[10px] leading-none text-black outline-none",
-        !readOnly && "focus:bg-yellow-100/70",
+        "absolute border border-transparent bg-transparent px-[1px] py-0 text-[9px] leading-none text-black outline-none",
+        !readOnly && "focus:border-sky-500/50 focus:bg-sky-50/10",
         className
       )}
       style={styleRect(x, y, w, h)}
@@ -744,18 +744,18 @@ export default function B21PlanForm({ tenantId, patient, document: doc, backHref
               readOnly={readOnly}
               contentPath="assistive_devices"
               x={1280}
-              y={1212}
+              y={1224}
               w={770}
-              h={533}
+              h={500}
             />
             <Field
               register={register}
               readOnly={readOnly}
               contentPath="monthly_status"
               x={1280}
-              y={1776}
+              y={1788}
               w={770}
-              h={150}
+              h={120}
             />
 
             <InputField
