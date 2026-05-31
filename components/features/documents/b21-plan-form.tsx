@@ -33,14 +33,13 @@ type Props = {
 const BASIC_MOVEMENTS = [
   "寝返り",
   "起き上がり",
-  "座位保持",
   "立ち上がり",
+  "座位保持",
   "立位保持",
-  "歩行（車いす）",
-  "階段昇降",
+  "その他",
 ] as const;
 
-const BM_LEVELS = ["自立", "監視", "一部介助", "全介助"] as const;
+const BM_LEVELS = ["自立", "一部介助", "介助", "非実施"] as const;
 
 const FIM_MOTOR: { label: string; items: string[] }[] = [
   {
@@ -1181,14 +1180,14 @@ export default function B21PlanForm({ tenantId, patient, document: doc, backHref
           <div>
             <SectionHeader>評価日</SectionHeader>
             <div className="mt-2 max-w-xs">
-              <FieldLabel>評価実施日</FieldLabel>
+              <FieldLabel>計画評価実施日</FieldLabel>
               {ro ? (
-                <ReadValue value={fmtDate(content.consent_date)} />
+                <ReadValue value={fmtDate(content.evaluation_date)} />
               ) : (
                 <input
                   type="date"
-                  value={content.consent_date ?? ""}
-                  onChange={(e) => setValue("content.consent_date", e.target.value)}
+                  value={content.evaluation_date ?? ""}
+                  onChange={(e) => setValue("content.evaluation_date", e.target.value)}
                   className={inputCls}
                 />
               )}
@@ -1243,12 +1242,12 @@ export default function B21PlanForm({ tenantId, patient, document: doc, backHref
               <div>
                 <FieldLabel>説明日</FieldLabel>
                 {ro ? (
-                  <ReadValue value={fmtDate(content.evaluation_date)} />
+                  <ReadValue value={fmtDate(content.consent_date)} />
                 ) : (
                   <input
                     type="date"
-                    value={content.evaluation_date ?? ""}
-                    onChange={(e) => setValue("content.evaluation_date", e.target.value)}
+                    value={content.consent_date ?? ""}
+                    onChange={(e) => setValue("content.consent_date", e.target.value)}
                     className={inputCls}
                   />
                 )}
